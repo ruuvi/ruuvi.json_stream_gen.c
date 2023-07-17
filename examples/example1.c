@@ -1,19 +1,17 @@
-# Ruuvi JSON Stream Generator
+/**
+* @file example1.c
+* @brief This file demonstrates the usage of the json_stream_gen library for generating JSON data in a streaming manner.
+*   The code includes the creation of a `json_stream_gen_t` object, initialization of user data in a custom structure,
+*   and the generation of JSON data in chunks. The corresponding JSON generation process considers named elements,
+*   arrays, and nested objects.
+*   The JSON data is generated in a streaming manner, chunk by chunk, with each chunk not exceeding a maximum chunk size.
+*   This example showcases how json_stream_gen library can be utilized for memory-efficient,
+*   incremental generation of complex JSON data.
+* @author TheSomeMan
+* @date 2023-07-10
+* @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
+*/
 
-## Overview
-
-The **ruuvi.json_stream_gen.c** is a library specifically designed for embedded systems with limited RAM resources. 
-It is a stream-oriented, asynchronous JSON generation tool, enabling the construction of JSON data in small, 
-fixed-size chunks.
-
-This library introduces an API that empowers users to dictate the sequence of JSON generation in a traditional, 
-sequential style, whilst simultaneously managing the underlying asynchronous operational mechanism in the background.
-
-## Usage
-
-Here is an example from "examples/example1.c"
-
-```C
 #include "../include/json_stream_gen.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,7 +28,7 @@ typedef struct user_data_t
 } user_data_t;
 
 // callback_generate_json: Called by json_stream_gen to generate JSON data.
-bool callback_generate_json(json_stream_gen_t* const p_gen, const void* p_user_ctx)
+bool callback_generate_json(json_stream_gen_t* const p_gen, const void* const p_user_ctx)
 {
     const user_data_t* const p_ctx = (const user_data_t*)p_user_ctx;
     JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
@@ -106,18 +104,3 @@ int main(void)
     }
     printf("Json generation successfully completed.\n");
 }
-```
-
-You can use the following command to compile it from the 'examples' folder:
-```shell
-gcc example1.c ../src/json_stream_gen.c -I ../include -lm -o example1
-```
-
-'example1' generates following output:
-```text
-Generating a JSON object of length 108 bytes, in chunks of no more than 40 bytes each.
-Generated chunk 1 (34 bytes): '{"key1":true,"key2":10,"key3":20.5'
-Generated chunk 2 (39 bytes): ',"key4":"Hello","key5":{"key6":[100,101'
-Generated chunk 3 (35 bytes): ',102,103,104,105,106,107,108,109]}}'
-Json generation successfully completed.
-```

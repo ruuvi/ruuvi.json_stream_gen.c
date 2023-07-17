@@ -1,0 +1,67 @@
+name: SonarCloud Analysis with Google Test and gcovr
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcovr g++ cmake libgtest-dev 
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install and set up SonarCloud Scanner
+        run: |
+          python -m pip install --upgrade pip
+          pip install sonar-scanner
+
+      - name: Cache SonarCloud packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Build, test and analyze
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          mkdir build
+          cd build
+          build-wrapper-linux-x86-64 --out-dir ../bw-output cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" ..
+          build-wrapper-linux-x86-64 --out-dir ../bw-output make
+          cd ..
+          cd tests
+          mkdir build
+          cd build
+          build-wrapper-linux-x86-64 --out-dir ../bw-output cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" ..
+          build-wrapper-linux-x86-64 --out-dir ../bw-output make
+          ctest
+          gcovr -r . --xml -o coverage.xml
+          cd ..
+          sonar-scanner \
+            -Dsonar.organization=ruuvi \
+            -Dsonar.projectKey=ruuvi_ruuvi.json_stream_gen.c \
+            -Dsonar.sources=./src,./include \
+            -Dsonar.cfamily.build-wrapper-output=bw-output \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.login=$SONAR_TOKEN \
+            -Dsonar.coverageReportPaths=tests/coverage.xml
