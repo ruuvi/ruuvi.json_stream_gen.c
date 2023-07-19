@@ -49,6 +49,21 @@ typedef bool (*json_stream_gen_cb_generate_next_t)(json_stream_gen_t* const p_ge
 typedef int32_t json_stream_gen_size_t;
 
 /**
+ * @brief A type definition for a function pointer that represents a malloc-like function.
+ *
+ * @param size The number of bytes to allocate.
+ * @return A pointer to the allocated memory, or NULL if the allocation fails.
+ */
+typedef void* (*json_stream_gen_malloc_t)(size_t size);
+
+/**
+ * @brief A type definition for a function pointer that represents a free-like function.
+ *
+ * @param ptr The pointer to the memory block to be freed.
+ */
+typedef void (*json_stream_gen_free_t)(void* ptr);
+
+/**
  * @brief json_stream_gen_cfg_t is a struct for configuration settings of the JSON stream generator.
  */
 typedef struct json_stream_gen_cfg_t
@@ -59,9 +74,10 @@ typedef struct json_stream_gen_cfg_t
     uint32_t
         indentation; //!< Number of indentation characters to use for each level of indentation when pretty printing.
     uint32_t max_nesting_level; //!< Maximum allowed depth for nested JSON elements (arrays, objects).
-    void* (*p_malloc)(
-        size_t size);          //!< Function pointer to override the standard 'malloc' function for memory allocation.
-    void (*p_free)(void* ptr); //!< Function pointer to override the standard 'free' function for memory deallocation.
+    json_stream_gen_malloc_t
+        p_malloc; //!< Function pointer to override the standard 'malloc' function for memory allocation.
+    json_stream_gen_free_t
+        p_free; //!< Function pointer to override the standard 'free' function for memory deallocation.
 } json_stream_gen_cfg_t;
 
 typedef int json_stream_gen_ieee754_precision_t;
