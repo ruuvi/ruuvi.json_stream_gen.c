@@ -61,6 +61,7 @@ dkms.conf
 /tests/cmake-build-*
 /tests/coverage.xml
 /bw-output
+coverage.xml
 
 .DS_Store
 .idea
