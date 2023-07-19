@@ -64,7 +64,7 @@ jobs:
           ctest
           gcovr -r . --xml -o coverage.xml
           cd ../..
-          sonar-scanner \
+          /opt/sonar-scanner/bin/sonar-scanner \
             -Dsonar.organization=ruuvi \
             -Dsonar.projectKey=ruuvi_ruuvi.json_stream_gen.c \
             -Dsonar.sources=./src,./include \
