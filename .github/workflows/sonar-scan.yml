@@ -6,10 +6,28 @@ on:
       - '**'
   pull_request:
     branches: [ master ]
+    types: [opened, synchronize, reopened]
+
+
+    steps:
+      - name: Run build-wrapper
+        run: |
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }}<insert_your_clean_build_command>
+      - name: Run sonar-scanner
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          sonar-scanner --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}"
+    
 
 jobs:
   build:
+    name: Build and analyze
     runs-on: ubuntu-latest
+
+    env:
+      BUILD_WRAPPER_OUT_DIR: bw-output # Directory where build-wrapper output will be placed
 
     steps:
       - name: Check out code
@@ -23,52 +41,32 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcovr g++ cmake
 
-      - name: Set up Python
-        uses: actions/setup-python@v3
-        with:
-          python-version: '3.x'
+      - name: Install sonar-scanner and build-wrapper
+        uses: SonarSource/sonarcloud-github-c-cpp@v1
 
-      - name: Install SonarCloud Scanner and Build Wrapper
+      - name: Run build-wrapper
         run: |
-          wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.6.2.2472-linux.zip
-          unzip sonar-scanner-cli-4.6.2.2472-linux.zip
-          sudo mv sonar-scanner-4.6.2.2472-linux /opt/sonar-scanner
-          export PATH=$PATH:/opt/sonar-scanner/bin
-          wget https://sonarcloud.io/static/cpp/build-wrapper-linux-x86.zip
-          unzip build-wrapper-linux-x86.zip
-          sudo mv build-wrapper-linux-x86 /opt/build-wrapper
-          export PATH=$PATH:/opt/build-wrapper
-
-      - name: Cache SonarCloud packages
-        uses: actions/cache@v2
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-
-      - name: Build, test and analyze
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }}<insert_your_clean_build_command>
           mkdir build
           cd build
-          /opt/build-wrapper/build-wrapper-linux-x86-64 --out-dir ../bw-output cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" ..
-          /opt/build-wrapper/build-wrapper-linux-x86-64 --out-dir ../bw-output make
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" ..
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} make
           cd ..
+
+      - name: Run test with coverage
+        run: |
           cd tests
           mkdir build
           cd build
-          /opt/build-wrapper/build-wrapper-linux-x86-64 --out-dir ../../bw-output cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" ..
-          /opt/build-wrapper/build-wrapper-linux-x86-64 --out-dir ../../bw-output make
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" ..
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} make
           ctest
           gcovr -r . --xml -o coverage.xml
           cd ../..
-          /opt/sonar-scanner/bin/sonar-scanner \
-            -Dsonar.organization=ruuvi \
-            -Dsonar.projectKey=ruuvi_ruuvi.json_stream_gen.c \
-            -Dsonar.sources=./src,./include \
-            -Dsonar.cfamily.build-wrapper-output=bw-output \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.login=$SONAR_TOKEN \
-            -Dsonar.coverageReportPaths=tests/coverage.xml
+
+      - name: Run sonar-scanner
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          sonar-scanner --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}"
