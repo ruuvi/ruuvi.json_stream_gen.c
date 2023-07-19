@@ -897,7 +897,7 @@ json_stream_gen_add_float_with_precision(
 
             // Check if the original double value can be recovered
             float test = NAN;
-            if ((sscanf(tmp_buffer, "%g", &test) != 1) || (test != val))
+            if ((sscanf(tmp_buffer, "%g", &test) != 1) || (*(uint32_t*)&test != *(uint32_t*)&val))
             {
                 // If not, print with more decimal places of precision
                 len = snprintf(tmp_buffer, sizeof(tmp_buffer), "%1.9g", val);
@@ -983,7 +983,7 @@ json_stream_gen_add_double_with_precision(
 
             // Check if the original double value can be recovered
             double test = NAN;
-            if ((sscanf(tmp_buffer, "%lg", &test) != 1) || (test != val))
+            if ((sscanf(tmp_buffer, "%lg", &test) != 1) || (*(uint64_t*)&test != *(uint64_t*)&val))
             {
                 // If not, print with more decimal places of precision
                 len = snprintf(tmp_buffer, sizeof(tmp_buffer), "%1.17g", val);
