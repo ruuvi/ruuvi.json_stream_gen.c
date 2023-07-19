@@ -47,7 +47,7 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" ..
           make
           ctest
-          gcovr -r . --xml -o coverage.xml
+          gcovr -r . --xml --output-type cobertura -o coverage.xml
           cd ../..
 
       - name: Run sonar-scanner
