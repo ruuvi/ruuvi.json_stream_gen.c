@@ -174,7 +174,11 @@ json_stream_gen_delete(json_stream_gen_t** p_p_gen)
 }
 
 static bool
-json_stream_gen_vprintf(json_stream_gen_t* const p_gen, const char* const p_fmt, va_list args)
+json_stream_gen_vprintf(
+    json_stream_gen_t* const p_gen,
+    const size_t             saved_chunk_buf_idx,
+    const char* const        p_fmt,
+    va_list                  args)
 {
     p_gen->flag_new_data_added = true;
     char* const  p_buf         = &p_gen->p_chunk_buf[p_gen->chunk_buf_idx];
@@ -182,19 +186,20 @@ json_stream_gen_vprintf(json_stream_gen_t* const p_gen, const char* const p_fmt,
     const int    len           = vsnprintf(p_buf, remaining_len, p_fmt, args);
     if (len >= (int)remaining_len)
     {
-        *p_buf = '\0';
+        p_gen->chunk_buf_idx                     = saved_chunk_buf_idx;
+        p_gen->p_chunk_buf[p_gen->chunk_buf_idx] = '\0';
         return false;
     }
     p_gen->chunk_buf_idx += len;
     return true;
 }
 
-__attribute__((format(printf, 2, 3))) static bool
-json_stream_gen_printf(json_stream_gen_t* const p_gen, const char* const p_fmt, ...)
+__attribute__((format(printf, 3, 4))) static bool
+json_stream_gen_printf(json_stream_gen_t* const p_gen, const size_t saved_chunk_buf_idx, const char* const p_fmt, ...)
 {
     va_list args;
     va_start(args, p_fmt);
-    const bool res = json_stream_gen_vprintf(p_gen, p_fmt, args);
+    const bool res = json_stream_gen_vprintf(p_gen, saved_chunk_buf_idx, p_fmt, args);
     va_end(args);
     return res;
 }
@@ -211,6 +216,7 @@ json_stream_gen_step(json_stream_gen_t* const p_gen)
             }
             if (!json_stream_gen_printf(
                     p_gen,
+                    p_gen->chunk_buf_idx,
                     "%.*s{",
                     p_gen->cur_nesting_level * p_gen->cfg.indentation,
                     p_gen->p_indent_filling))
@@ -243,6 +249,7 @@ json_stream_gen_step(json_stream_gen_t* const p_gen)
             }
             if (!json_stream_gen_printf(
                     p_gen,
+                    p_gen->chunk_buf_idx,
                     "%s%.*s}",
                     p_gen->p_eol,
                     (p_gen->cur_nesting_level - 1) * p_gen->cfg.indentation,
@@ -316,19 +323,15 @@ json_stream_gen_reset(json_stream_gen_t* const p_gen)
     p_gen->chunk_buf_idx         = 0;
 }
 
-bool
-json_stream_gen_start_object(json_stream_gen_t* const p_gen, const char* const p_name)
+static bool
+json_stream_gen_print_prefix(json_stream_gen_t* const p_gen, const size_t saved_chunk_buf_idx, const char* const p_name)
 {
-    if (p_gen->cur_nesting_level == p_gen->cfg.max_nesting_level)
-    {
-        p_gen->flag_new_data_added = true;
-        return false;
-    }
     if (NULL != p_name)
     {
         if (!json_stream_gen_printf(
                 p_gen,
-                "%s%s%.*s\"%s\":%s{",
+                saved_chunk_buf_idx,
+                "%s%s%.*s\"%s\":%s",
                 p_gen->is_first_item ? "" : ",",
                 p_gen->p_eol,
                 p_gen->cur_nesting_level * p_gen->cfg.indentation,
@@ -343,7 +346,8 @@ json_stream_gen_start_object(json_stream_gen_t* const p_gen, const char* const p
     {
         if (!json_stream_gen_printf(
                 p_gen,
-                "%s%s%.*s{",
+                saved_chunk_buf_idx,
+                "%s%s%.*s",
                 p_gen->is_first_item ? "" : ",",
                 p_gen->p_eol,
                 p_gen->cur_nesting_level * p_gen->cfg.indentation,
@@ -352,6 +356,28 @@ json_stream_gen_start_object(json_stream_gen_t* const p_gen, const char* const p
             return false;
         }
     }
+    return true;
+}
+
+bool
+json_stream_gen_start_object(json_stream_gen_t* const p_gen, const char* const p_name)
+{
+    if (p_gen->cur_nesting_level == p_gen->cfg.max_nesting_level)
+    {
+        p_gen->flag_new_data_added = true;
+        return false;
+    }
+
+    const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
+    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
+    {
+        return false;
+    }
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "{"))
+    {
+        return false;
+    }
+
     p_gen->cur_nesting_level += 1;
     p_gen->is_first_item = true;
     return true;
@@ -367,7 +393,7 @@ json_stream_gen_end_object(json_stream_gen_t* const p_gen)
     }
     if (p_gen->is_first_item)
     {
-        if (!json_stream_gen_printf(p_gen, "}"))
+        if (!json_stream_gen_printf(p_gen, p_gen->chunk_buf_idx, "}"))
         {
             return false;
         }
@@ -376,6 +402,7 @@ json_stream_gen_end_object(json_stream_gen_t* const p_gen)
     {
         if (!json_stream_gen_printf(
                 p_gen,
+                p_gen->chunk_buf_idx,
                 "%s%.*s}",
                 p_gen->p_eol,
                 (p_gen->cur_nesting_level - 1) * p_gen->cfg.indentation,
@@ -397,33 +424,14 @@ json_stream_gen_start_array(json_stream_gen_t* const p_gen, const char* const p_
         p_gen->flag_new_data_added = true;
         return false;
     }
-    if (NULL != p_name)
+    const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
+    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s\"%s\":%s[",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                p_name,
-                p_gen->p_delimiter))
-        {
-            return false;
-        }
+        return false;
     }
-    else
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "["))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s[",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling))
-        {
-            return false;
-        }
+        return false;
     }
     p_gen->cur_nesting_level += 1;
     p_gen->is_first_item = true;
@@ -440,7 +448,7 @@ json_stream_gen_end_array(json_stream_gen_t* const p_gen)
     }
     if (p_gen->is_first_item)
     {
-        if (!json_stream_gen_printf(p_gen, "]"))
+        if (!json_stream_gen_printf(p_gen, p_gen->chunk_buf_idx, "]"))
         {
             return false;
         }
@@ -449,6 +457,7 @@ json_stream_gen_end_array(json_stream_gen_t* const p_gen)
     {
         if (!json_stream_gen_printf(
                 p_gen,
+                p_gen->chunk_buf_idx,
                 "%s%.*s]",
                 p_gen->p_eol,
                 (p_gen->cur_nesting_level - 1) * p_gen->cfg.indentation,
@@ -463,22 +472,58 @@ json_stream_gen_end_array(json_stream_gen_t* const p_gen)
 }
 
 static bool
+json_stream_gen_check_char_escaping(const char input_char, char* const p_output_char)
+{
+    char output_char        = input_char;
+    bool flag_need_escaping = false;
+    switch (input_char)
+    {
+        case '\"':
+            output_char        = '\"';
+            flag_need_escaping = true;
+            break;
+        case '\\':
+            output_char        = '\\';
+            flag_need_escaping = true;
+            break;
+        case '\b':
+            output_char        = 'b';
+            flag_need_escaping = true;
+            break;
+        case '\f':
+            output_char        = 'f';
+            flag_need_escaping = true;
+            break;
+        case '\n':
+            output_char        = 'n';
+            flag_need_escaping = true;
+            break;
+        case '\r':
+            output_char        = 'r';
+            flag_need_escaping = true;
+            break;
+        case '\t':
+            output_char        = 't';
+            flag_need_escaping = true;
+            break;
+        default:
+            break;
+    }
+    if (NULL != p_output_char)
+    {
+        *p_output_char = output_char;
+    }
+    return flag_need_escaping;
+}
+
+static bool
 json_stream_gen_check_if_str_need_escaping(const char* const p_val)
 {
     for (const char* p_char = p_val; '\0' != *p_char; p_char++)
     {
-        switch (*p_char)
+        if (json_stream_gen_check_char_escaping(*p_char, NULL))
         {
-            case '\"':
-            case '\\':
-            case '\b':
-            case '\f':
-            case '\n':
-            case '\r':
-            case '\t':
-                return true;
-            default:
-                break;
+            return true;
         }
     }
     return false;
@@ -497,93 +542,36 @@ json_stream_gen_add_string(json_stream_gen_t* const p_gen, const char* const p_n
     }
 
     const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
+    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
+    {
+        return false;
+    }
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "\""))
+    {
+        return false;
+    }
 
-    if (NULL != p_name)
-    {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s\"%s\":%s\"",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                p_name,
-                p_gen->p_delimiter))
-        {
-            p_gen->chunk_buf_idx                     = saved_chunk_buf_idx;
-            p_gen->p_chunk_buf[p_gen->chunk_buf_idx] = '\0';
-            return false;
-        }
-    }
-    else
-    {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s\"",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling))
-        {
-            p_gen->chunk_buf_idx                     = saved_chunk_buf_idx;
-            p_gen->p_chunk_buf[p_gen->chunk_buf_idx] = '\0';
-            return false;
-        }
-    }
     for (const char* p_char = p_val; '\0' != *p_char; p_char++)
     {
-        bool flag_escape = true;
-        char output_char = '\0';
-        switch (*p_char)
-        {
-            case '\"':
-                output_char = '\"';
-                break;
-            case '\\':
-                output_char = '\\';
-                break;
-            case '\b':
-                output_char = 'b';
-                break;
-            case '\f':
-                output_char = 'f';
-                break;
-            case '\n':
-                output_char = 'n';
-                break;
-            case '\r':
-                output_char = 'r';
-                break;
-            case '\t':
-                output_char = 't';
-                break;
-            default:
-                flag_escape = false;
-                break;
-        }
+        char       output_char = '\0';
+        const bool flag_escape = json_stream_gen_check_char_escaping(*p_char, &output_char);
         if (flag_escape)
         {
-            if (!json_stream_gen_printf(p_gen, "\\%c", output_char))
+            if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "\\%c", output_char))
             {
-                p_gen->chunk_buf_idx                     = saved_chunk_buf_idx;
-                p_gen->p_chunk_buf[p_gen->chunk_buf_idx] = '\0';
                 return false;
             }
         }
         else
         {
-            if (!json_stream_gen_printf(p_gen, "%c", *p_char))
+            if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%c", *p_char))
             {
-                p_gen->chunk_buf_idx                     = saved_chunk_buf_idx;
-                p_gen->p_chunk_buf[p_gen->chunk_buf_idx] = '\0';
                 return false;
             }
         }
     }
-    if (!json_stream_gen_printf(p_gen, "\""))
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "\""))
     {
-        p_gen->chunk_buf_idx                     = saved_chunk_buf_idx;
-        p_gen->p_chunk_buf[p_gen->chunk_buf_idx] = '\0';
         return false;
     }
     p_gen->is_first_item = false;
@@ -597,35 +585,14 @@ json_stream_gen_add_raw_string(json_stream_gen_t* const p_gen, const char* const
     {
         return json_stream_gen_add_null(p_gen, p_name);
     }
-    if (NULL != p_name)
+    const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
+    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s\"%s\":%s\"%s\"",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                p_name,
-                p_gen->p_delimiter,
-                p_val))
-        {
-            return false;
-        }
+        return false;
     }
-    else
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "\"%s\"", p_val))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s\"%s\"",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                p_val))
-        {
-            return false;
-        }
+        return false;
     }
     p_gen->is_first_item = false;
     return true;
@@ -634,37 +601,14 @@ json_stream_gen_add_raw_string(json_stream_gen_t* const p_gen, const char* const
 bool
 json_stream_gen_add_int32(json_stream_gen_t* const p_gen, const char* const p_name, const int32_t val)
 {
-    if (NULL != p_name)
+    const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
+    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s\"%s\":%s"
-                "%" PRId32,
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                p_name,
-                p_gen->p_delimiter,
-                val))
-        {
-            return false;
-        }
+        return false;
     }
-    else
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%" PRId32, val))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s"
-                "%" PRId32,
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                val))
-        {
-            return false;
-        }
+        return false;
     }
     p_gen->is_first_item = false;
     return true;
@@ -673,37 +617,14 @@ json_stream_gen_add_int32(json_stream_gen_t* const p_gen, const char* const p_na
 bool
 json_stream_gen_add_uint32(json_stream_gen_t* const p_gen, const char* const p_name, const uint32_t val)
 {
-    if (NULL != p_name)
+    const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
+    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s\"%s\":%s"
-                "%" PRIu32,
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                p_name,
-                p_gen->p_delimiter,
-                val))
-        {
-            return false;
-        }
+        return false;
     }
-    else
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%" PRIu32, val))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s"
-                "%" PRIu32,
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                val))
-        {
-            return false;
-        }
+        return false;
     }
     p_gen->is_first_item = false;
     return true;
@@ -712,37 +633,14 @@ json_stream_gen_add_uint32(json_stream_gen_t* const p_gen, const char* const p_n
 bool
 json_stream_gen_add_int64(json_stream_gen_t* const p_gen, const char* const p_name, const int64_t val)
 {
-    if (NULL != p_name)
+    const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
+    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s\"%s\":%s"
-                "%" PRId64,
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                p_name,
-                p_gen->p_delimiter,
-                val))
-        {
-            return false;
-        }
+        return false;
     }
-    else
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%" PRId64, val))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s"
-                "%" PRId64,
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                val))
-        {
-            return false;
-        }
+        return false;
     }
     p_gen->is_first_item = false;
     return true;
@@ -751,37 +649,14 @@ json_stream_gen_add_int64(json_stream_gen_t* const p_gen, const char* const p_na
 bool
 json_stream_gen_add_uint64(json_stream_gen_t* const p_gen, const char* const p_name, const uint64_t val)
 {
-    if (NULL != p_name)
+    const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
+    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s\"%s\":%s"
-                "%" PRIu64,
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                p_name,
-                p_gen->p_delimiter,
-                val))
-        {
-            return false;
-        }
+        return false;
     }
-    else
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%" PRIu64, val))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s"
-                "%" PRIu64,
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                val))
-        {
-            return false;
-        }
+        return false;
     }
     p_gen->is_first_item = false;
     return true;
@@ -790,37 +665,14 @@ json_stream_gen_add_uint64(json_stream_gen_t* const p_gen, const char* const p_n
 bool
 json_stream_gen_add_bool(json_stream_gen_t* const p_gen, const char* const p_name, const bool val)
 {
-    if (NULL != p_name)
+    const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
+    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s\"%s\":%s"
-                "%s",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                p_name,
-                p_gen->p_delimiter,
-                val ? "true" : "false"))
-        {
-            return false;
-        }
+        return false;
     }
-    else
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%s", val ? "true" : "false"))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s"
-                "%s",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                val ? "true" : "false"))
-        {
-            return false;
-        }
+        return false;
     }
     p_gen->is_first_item = false;
     return true;
@@ -829,37 +681,14 @@ json_stream_gen_add_bool(json_stream_gen_t* const p_gen, const char* const p_nam
 bool
 json_stream_gen_add_null(json_stream_gen_t* const p_gen, const char* const p_name)
 {
-    if (NULL != p_name)
+    const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
+    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s\"%s\":%s"
-                "%s",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                p_name,
-                p_gen->p_delimiter,
-                "null"))
-        {
-            return false;
-        }
+        return false;
     }
-    else
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%s", "null"))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s"
-                "%s",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                "null"))
-        {
-            return false;
-        }
+        return false;
     }
     p_gen->is_first_item = false;
     return true;
@@ -946,37 +775,14 @@ json_stream_gen_add_float_with_precision(
         return json_stream_gen_add_null(p_gen, p_name);
     }
 
-    if (NULL != p_name)
+    const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
+    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s\"%s\":%s"
-                "%s",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                p_name,
-                p_gen->p_delimiter,
-                float_str.buffer))
-        {
-            return false;
-        }
+        return false;
     }
-    else
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%s", float_str.buffer))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s"
-                "%s",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                float_str.buffer))
-        {
-            return false;
-        }
+        return false;
     }
     p_gen->is_first_item = false;
     return true;
@@ -1051,38 +857,14 @@ json_stream_gen_add_double_with_precision(
     {
         return json_stream_gen_add_null(p_gen, p_name);
     }
-
-    if (NULL != p_name)
+    const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
+    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s\"%s\":%s"
-                "%s",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                p_name,
-                p_gen->p_delimiter,
-                double_str.buffer))
-        {
-            return false;
-        }
+        return false;
     }
-    else
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%s", double_str.buffer))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s"
-                "%s",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                double_str.buffer))
-        {
-            return false;
-        }
+        return false;
     }
     p_gen->is_first_item = false;
     return true;
@@ -1241,37 +1023,14 @@ json_stream_gen_add_float_limited_fixed_point(
         return false;
     }
 
-    if (NULL != p_name)
+    const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
+    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s\"%s\":%s"
-                "%s",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                p_name,
-                p_gen->p_delimiter,
-                tmp_buffer))
-        {
-            return false;
-        }
+        return false;
     }
-    else
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%s", tmp_buffer))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s"
-                "%s",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                tmp_buffer))
-        {
-            return false;
-        }
+        return false;
     }
     p_gen->is_first_item = false;
     return true;
@@ -1381,37 +1140,14 @@ json_stream_gen_add_double_limited_fixed_point(
         return false;
     }
 
-    if (NULL != p_name)
+    const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
+    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s\"%s\":%s"
-                "%s",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                p_name,
-                p_gen->p_delimiter,
-                tmp_buffer))
-        {
-            return false;
-        }
+        return false;
     }
-    else
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%s", tmp_buffer))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s"
-                "%s",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                tmp_buffer))
-        {
-            return false;
-        }
+        return false;
     }
     p_gen->is_first_item = false;
     return true;
@@ -1425,52 +1161,23 @@ json_stream_gen_add_hex_buf(
     size_t                   buf_len)
 {
     const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
-
-    if (NULL != p_name)
+    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s\"%s\":%s\"",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                p_name,
-                p_gen->p_delimiter))
-        {
-            p_gen->chunk_buf_idx                     = saved_chunk_buf_idx;
-            p_gen->p_chunk_buf[p_gen->chunk_buf_idx] = '\0';
-            return false;
-        }
+        return false;
     }
-    else
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "\""))
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                "%s%s%.*s\"",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling))
-        {
-            p_gen->chunk_buf_idx                     = saved_chunk_buf_idx;
-            p_gen->p_chunk_buf[p_gen->chunk_buf_idx] = '\0';
-            return false;
-        }
+        return false;
     }
     for (size_t i = 0; i < buf_len; ++i)
     {
-        if (!json_stream_gen_printf(p_gen, "%02X", p_buf[i]))
+        if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%02X", p_buf[i]))
         {
-            p_gen->chunk_buf_idx                     = saved_chunk_buf_idx;
-            p_gen->p_chunk_buf[p_gen->chunk_buf_idx] = '\0';
             return false;
         }
     }
-    if (!json_stream_gen_printf(p_gen, "\""))
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "\""))
     {
-        p_gen->chunk_buf_idx                     = saved_chunk_buf_idx;
-        p_gen->p_chunk_buf[p_gen->chunk_buf_idx] = '\0';
         return false;
     }
     p_gen->is_first_item = false;
