@@ -1538,7 +1538,11 @@ TEST_F(TestJsonStreamGenF, test_generate_json_fixed_float_max_val_without_loosin
         [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
             (void)p_user_ctx;
             JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
-            JSON_STREAM_GEN_ADD_FLOAT_FIXED_POINT(p_gen, "key_0", 16777216 /* 2^23 */, JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
+            JSON_STREAM_GEN_ADD_FLOAT_FIXED_POINT(
+                p_gen,
+                "key_0",
+                16777216 /* 2^23 */,
+                JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
             JSON_STREAM_GEN_ADD_FLOAT_FIXED_POINT(
                 p_gen,
                 "key_1",
@@ -1720,12 +1724,18 @@ TEST_F(TestJsonStreamGenF, test_generate_array1) // NOLINT
 
                 JSON_STREAM_GEN_START_ARRAY(p_gen, "arr_fixed_float");
                 JSON_STREAM_GEN_ADD_FLOAT_FIXED_POINT_TO_ARRAY(p_gen, 1.5f, JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_2);
-                JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT_TO_ARRAY(p_gen, 1.5f, JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_2);
+                JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT_TO_ARRAY(
+                    p_gen,
+                    1.5f,
+                    JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_2);
                 JSON_STREAM_GEN_END_ARRAY(p_gen);
 
                 JSON_STREAM_GEN_START_ARRAY(p_gen, "arr_fixed_double");
                 JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT_TO_ARRAY(p_gen, 1.5, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_2);
-                JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT_TO_ARRAY(p_gen, 1.5, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_2);
+                JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT_TO_ARRAY(
+                    p_gen,
+                    1.5,
+                    JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_2);
                 JSON_STREAM_GEN_END_ARRAY(p_gen);
 
                 const uint8_t buf1[4] = { 0x01, 0x02, 0xaa, 0xcc };

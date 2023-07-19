@@ -8,7 +8,8 @@
  *  It is a stream-oriented, asynchronous JSON generation tool, enabling the construction of JSON data in small,
  *  fixed-size chunks.
  *  This library introduces an API that empowers users to dictate the sequence of JSON generation in a traditional,
- *  sequential style, whilst simultaneously managing the underlying asynchronous operational mechanism in the background.
+ *  sequential style, whilst simultaneously managing the underlying asynchronous operational mechanism in the
+ * background.
  */
 
 #ifndef JSON_STREAM_GEN_H
@@ -34,7 +35,8 @@ extern "C" {
 typedef struct json_stream_gen_t json_stream_gen_t;
 
 /**
- * @brief json_stream_gen_cb_generate_next_t is a JSON generator callback function type that generates the next chunk of JSON.
+ * @brief json_stream_gen_cb_generate_next_t is a JSON generator callback function type that generates the next chunk of
+ * JSON.
  * @param p_gen is a pointer to the JSON generator object.
  * @param p_user_ctx is a pointer to user-defined data used during JSON generation.
  * @return returns true if the generation of the chunk is successful, false otherwise.
@@ -51,12 +53,14 @@ typedef int32_t json_stream_gen_size_t;
  */
 typedef struct json_stream_gen_cfg_t
 {
-    json_stream_gen_size_t max_chunk_size;  //!< Maximum size (in bytes) for each chunk of generated JSON data.
+    json_stream_gen_size_t max_chunk_size;      //!< Maximum size (in bytes) for each chunk of generated JSON data.
     bool                   flag_formatted_json; //!< Set to true to enable pretty printing (formatted JSON).
-    char                   indentation_mark; //!< Character used for indentation when pretty printing is enabled.
-    uint32_t               indentation; //!< Number of indentation characters to use for each level of indentation when pretty printing.
-    uint32_t               max_nesting_level; //!< Maximum allowed depth for nested JSON elements (arrays, objects).
-    void* (*p_malloc)(size_t size); //!< Function pointer to override the standard 'malloc' function for memory allocation.
+    char                   indentation_mark;    //!< Character used for indentation when pretty printing is enabled.
+    uint32_t
+        indentation; //!< Number of indentation characters to use for each level of indentation when pretty printing.
+    uint32_t max_nesting_level; //!< Maximum allowed depth for nested JSON elements (arrays, objects).
+    void* (*p_malloc)(
+        size_t size);          //!< Function pointer to override the standard 'malloc' function for memory allocation.
     void (*p_free)(void* ptr); //!< Function pointer to override the standard 'free' function for memory deallocation.
 } json_stream_gen_cfg_t;
 
@@ -958,7 +962,8 @@ typedef enum json_stream_gen_num_decimals_double_e
 /**
  * @def JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT_TO_ARRAY(p_gen, val, num_decimals)
  *
- * @brief A macro that adds a floating-point(double) number to a JSON array in the stream in a limited fixed point notation.
+ * @brief A macro that adds a floating-point(double) number to a JSON array in the stream in a limited fixed point
+ * notation.
  *
  * @note This macro is a part of the generator's state machine. It checks the current generator stage,
  * and if the stage matches, it calls the function to add the floating-point number to the JSON array.
@@ -1100,7 +1105,8 @@ json_stream_gen_add_raw_string(json_stream_gen_t* const p_gen, const char* const
  * @brief Adds a 32-bit integer to the JSON stream.
  * @details This function adds a 32-bit integer to the JSON stream.
  * @param p_gen Pointer to the JSON stream generator.
- * @param p_name Name of the integer to be added. If this is `NULL`, the integer is added without a name (into an array).
+ * @param p_name Name of the integer to be added. If this is `NULL`, the integer is added without a name (into an
+ * array).
  * @param val The 32-bit integer value to be added to the JSON stream.
  * @return Returns `true` if the value was successfully added to the JSON stream; otherwise, returns `false`.
  */
@@ -1111,7 +1117,8 @@ json_stream_gen_add_int32(json_stream_gen_t* const p_gen, const char* const p_na
  * @brief Adds a 32-bit unsigned integer to the JSON stream.
  * @details This function adds a 32-bit unsigned integer to the JSON stream.
  * @param p_gen Pointer to the JSON stream generator.
- * @param p_name Name of the integer to be added. If this is `NULL`, the integer is added without a name (into an array).
+ * @param p_name Name of the integer to be added. If this is `NULL`, the integer is added without a name (into an
+ * array).
  * @param val The 32-bit unsigned integer value to be added to the JSON stream.
  * @return Returns `true` if the value was successfully added to the JSON stream; otherwise, returns `false`.
  */
@@ -1122,7 +1129,8 @@ json_stream_gen_add_uint32(json_stream_gen_t* const p_gen, const char* const p_n
  * @brief Adds a 64-bit integer to the JSON stream.
  * @details This function adds a 64-bit integer to the JSON stream.
  * @param p_gen Pointer to the JSON stream generator.
- * @param p_name Name of the integer to be added. If this is `NULL`, the integer is added without a name (into an array).
+ * @param p_name Name of the integer to be added. If this is `NULL`, the integer is added without a name (into an
+ * array).
  * @param val The 64-bit integer value to be added to the JSON stream.
  * @return Returns `true` if the value was successfully added to the JSON stream; otherwise, returns `false`.
  */
@@ -1133,7 +1141,8 @@ json_stream_gen_add_int64(json_stream_gen_t* const p_gen, const char* const p_na
  * @brief Adds a 64-bit unsigned integer to the JSON stream.
  * @details This function adds a 64-bit unsigned integer to the JSON stream.
  * @param p_gen Pointer to the JSON stream generator.
- * @param p_name Name of the integer to be added. If this is `NULL`, the integer is added without a name (into an array).
+ * @param p_name Name of the integer to be added. If this is `NULL`, the integer is added without a name (into an
+ * array).
  * @param val The 64-bit unsigned integer value to be added to the JSON stream.
  * @return Returns `true` if the value was successfully added to the JSON stream; otherwise, returns `false`.
  */
@@ -1144,7 +1153,8 @@ json_stream_gen_add_uint64(json_stream_gen_t* const p_gen, const char* const p_n
  * @brief Adds a boolean to the JSON stream.
  * @details This function adds a boolean value to the JSON stream.
  * @param p_gen Pointer to the JSON stream generator.
- * @param p_name Name of the boolean to be added. If this is `NULL`, the boolean is added without a name (into an array).
+ * @param p_name Name of the boolean to be added. If this is `NULL`, the boolean is added without a name (into an
+ * array).
  * @param val The boolean value to be added to the JSON stream.
  * @return Returns `true` if the boolean was successfully added to the JSON stream; otherwise, returns `false`.
  */
@@ -1155,7 +1165,8 @@ json_stream_gen_add_bool(json_stream_gen_t* const p_gen, const char* const p_nam
  * @brief Adds a null to the JSON stream.
  * @details This function adds a null value to the JSON stream.
  * @param p_gen Pointer to the JSON stream generator.
- * @param p_name Name of the null value to be added. If this is `NULL`, the null value is added without a name (into an array).
+ * @param p_name Name of the null value to be added. If this is `NULL`, the null value is added without a name (into an
+ * array).
  * @return Returns `true` if the null value was successfully added to the JSON stream; otherwise, returns `false`.
  */
 bool
@@ -1274,8 +1285,9 @@ json_stream_gen_add_double_limited_fixed_point(
 /**
  * @brief Adds a hexadecimal buffer to the JSON stream.
  *
- * This function adds a binary buffer to the JSON stream, where the buffer is represented as a string of hexadecimal digits.
- * If the buffer cannot be added due to size limitations, it resets the generator state to the state before the function call.
+ * This function adds a binary buffer to the JSON stream, where the buffer is represented as a string of hexadecimal
+ * digits. If the buffer cannot be added due to size limitations, it resets the generator state to the state before the
+ * function call.
  *
  * @param p_gen   Pointer to the JSON stream generator.
  * @param p_name  Name of the JSON item.

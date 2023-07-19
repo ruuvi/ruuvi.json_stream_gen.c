@@ -33,6 +33,5 @@ jobs:
         
       - name: Run tests
         run: |
-          cd cmake-build-unit-tests
+          cd tests/cmake-build-unit-tests
           ctest
-
