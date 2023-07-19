@@ -49,9 +49,8 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" ..
           make
           ctest
-          cd ..
-          gcovr -r . --sonarqube -o coverage.xml
           cd ../..
+          gcovr -r . --sonarqube -o coverage.xml
 
       - name: Run sonar-scanner
         env:
@@ -59,4 +58,4 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           sonar-scanner --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}" \
-            --define sonar.coverageReportPaths=tests/coverage.xml
+            --define sonar.coverageReportPaths=coverage.xml
