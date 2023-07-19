@@ -26,8 +26,9 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y g++ cmake python3-pip
-          pip3 install --upgrade gcovr
+          sudo apt-get install -y g++ cmake gcovr
+#          sudo apt-get install -y g++ cmake python3-pip
+#          pip3 install --upgrade gcovr
 
       - name: Install sonar-scanner and build-wrapper
         uses: SonarSource/sonarcloud-github-c-cpp@v1
@@ -48,7 +49,7 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" ..
           make
           ctest
-          gcovr -r . --xml --output-type cobertura -o coverage.xml
+          gcovr -r . --sonarqube coverage.xml
           cd ../..
 
       - name: Run sonar-scanner
