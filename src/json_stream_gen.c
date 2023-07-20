@@ -265,7 +265,7 @@ jsg_step_json_closing_bracket(json_stream_gen_t* const p_gen)
     {
         return false;
     }
-    const jsg_int_t indent = (jsg_int_t)((p_gen->cur_nesting_level - 1) * p_gen->cfg.indentation);
+    const jsg_int_t indent = ((jsg_int_t)p_gen->cur_nesting_level - 1) * (jsg_int_t)p_gen->cfg.indentation;
     if (!jsg_printf(p_gen, p_gen->chunk_buf_idx, "%s%.*s}", p_gen->p_eol, indent, p_gen->p_indent_filling))
     {
         return false;
@@ -365,7 +365,7 @@ json_stream_gen_reset(json_stream_gen_t* const p_gen)
 static bool
 jsg_print_prefix(json_stream_gen_t* const p_gen, const size_t saved_chunk_buf_idx, const char* const p_name)
 {
-    const jsg_int_t   indent = (jsg_int_t)(p_gen->cur_nesting_level * p_gen->cfg.indentation);
+    const jsg_int_t   indent = (jsg_int_t)p_gen->cur_nesting_level * (jsg_int_t)p_gen->cfg.indentation;
     const char* const p_sep  = p_gen->is_first_item ? "" : ",";
     if (NULL != p_name)
     {
@@ -446,7 +446,7 @@ jsg_end_obj_or_array(json_stream_gen_t* const p_gen, const char symbol)
     }
     else
     {
-        const jsg_int_t indent = (jsg_int_t)((p_gen->cur_nesting_level - 1) * p_gen->cfg.indentation);
+        const jsg_int_t indent = ((jsg_int_t)p_gen->cur_nesting_level - 1) * (jsg_int_t)p_gen->cfg.indentation;
         if (!jsg_printf(p_gen, p_gen->chunk_buf_idx, "%s%.*s%c", p_gen->p_eol, indent, p_gen->p_indent_filling, symbol))
         {
             return false;
@@ -921,9 +921,9 @@ jsg_limited_float_to_str(
     const json_stream_gen_num_decimals_float_e num_decimals,
     jsg_limited_float_str_buf_t* const         p_str)
 {
-    static const uint32_t g_multipliers_u32[10] = { (uint32_t)1e+0, (uint32_t)1e+1, (uint32_t)1e+2, (uint32_t)1e+3,
-                                                    (uint32_t)1e+4, (uint32_t)1e+5, (uint32_t)1e+6, (uint32_t)1e+7,
-                                                    (uint32_t)1e+8, (uint32_t)1e+9 };
+    static const uint32_t g_multipliers_u32[JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_6 + 1] = {
+        (uint32_t)1e+0, (uint32_t)1e+1, (uint32_t)1e+2, (uint32_t)1e+3, (uint32_t)1e+4, (uint32_t)1e+5, (uint32_t)1e+6,
+    };
 
     if (num_decimals >= (sizeof(g_multipliers_u32) / sizeof(g_multipliers_u32[0])))
     {
@@ -1032,11 +1032,10 @@ jsg_limited_double_to_str(
     const json_stream_gen_num_decimals_double_e num_decimals,
     jsg_limited_double_str_buf_t* const         p_str)
 {
-    static const uint64_t g_multipliers_u64[20] = {
-        (uint64_t)1e+0,  (uint64_t)1e+1,  (uint64_t)1e+2,  (uint64_t)1e+3,  (uint64_t)1e+4,
-        (uint64_t)1e+5,  (uint64_t)1e+6,  (uint64_t)1e+7,  (uint64_t)1e+8,  (uint64_t)1e+9,
-        (uint64_t)1e+10, (uint64_t)1e+11, (uint64_t)1e+12, (uint64_t)1e+13, (uint64_t)1e+14,
-        (uint64_t)1e+15, (uint64_t)1e+16, (uint64_t)1e+17, (uint64_t)1e+18, (uint64_t)1e+19
+    static const uint64_t g_multipliers_u64[JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12 + 1] = {
+        (uint64_t)1e+0,  (uint64_t)1e+1,  (uint64_t)1e+2,  (uint64_t)1e+3, (uint64_t)1e+4,
+        (uint64_t)1e+5,  (uint64_t)1e+6,  (uint64_t)1e+7,  (uint64_t)1e+8, (uint64_t)1e+9,
+        (uint64_t)1e+10, (uint64_t)1e+11, (uint64_t)1e+12,
     };
 
     if (num_decimals >= (sizeof(g_multipliers_u64) / sizeof(g_multipliers_u64[0])))
