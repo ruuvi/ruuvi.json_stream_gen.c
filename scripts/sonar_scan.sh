@@ -31,6 +31,7 @@ build-wrapper-linux-x86-64 --out-dir ./bw-output cmake -DCMAKE_BUILD_TYPE=Debug 
 build-wrapper-linux-x86-64 --out-dir ./bw-output make -j $(nproc)
 cd ..
 
+rm -f coverage.xml
 cd tests
 rm -rf build
 mkdir -p build
@@ -48,3 +49,6 @@ sonar-scanner -X \
   --define sonar.coverageReportPaths=coverage.xml \
   --define sonar.host.url=https://sonarcloud.io \
   --define sonar.cfamily.threads=$(nproc)
+rm -f coverage.xml
+rm -rf build
+rm -rf tests/build
