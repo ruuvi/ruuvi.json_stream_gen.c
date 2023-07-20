@@ -366,8 +366,8 @@ json_stream_gen_print_prefix(json_stream_gen_t* const p_gen, const size_t saved_
     return true;
 }
 
-bool
-json_stream_gen_start_object(json_stream_gen_t* const p_gen, const char* const p_name)
+static bool
+json_stream_gen_start_obj_or_arr(json_stream_gen_t* const p_gen, const char* const p_name, const char symbol)
 {
     if (p_gen->cur_nesting_level == p_gen->cfg.max_nesting_level)
     {
@@ -380,102 +380,72 @@ json_stream_gen_start_object(json_stream_gen_t* const p_gen, const char* const p
     {
         return false;
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "{"))
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%c", symbol))
     {
         return false;
     }
 
     p_gen->cur_nesting_level += 1;
     p_gen->is_first_item = true;
+    return true;
+}
+
+bool
+json_stream_gen_start_object(json_stream_gen_t* const p_gen, const char* const p_name)
+{
+    return json_stream_gen_start_obj_or_arr(p_gen, p_name, '{');
+}
+
+bool
+json_stream_gen_start_array(json_stream_gen_t* const p_gen, const char* const p_name)
+{
+    return json_stream_gen_start_obj_or_arr(p_gen, p_name, '[');
+}
+
+static bool
+json_stream_gen_end_obj_or_array(json_stream_gen_t* const p_gen, const char symbol)
+{
+    if (0 == p_gen->cur_nesting_level)
+    {
+        p_gen->flag_new_data_added = true;
+        return false;
+    }
+    if (p_gen->is_first_item)
+    {
+        if (!json_stream_gen_printf(p_gen, p_gen->chunk_buf_idx, "%c", symbol))
+        {
+            return false;
+        }
+    }
+    else
+    {
+        if (!json_stream_gen_printf(
+                p_gen,
+                p_gen->chunk_buf_idx,
+                "%s%.*s%c",
+                p_gen->p_eol,
+                (p_gen->cur_nesting_level - 1) * p_gen->cfg.indentation,
+                p_gen->p_indent_filling,
+                symbol))
+        {
+            return false;
+        }
+    }
+    p_gen->cur_nesting_level -= 1;
+    p_gen->is_first_item = false;
     return true;
 }
 
 bool
 json_stream_gen_end_object(json_stream_gen_t* const p_gen)
 {
-    if (0 == p_gen->cur_nesting_level)
-    {
-        p_gen->flag_new_data_added = true;
-        return false;
-    }
-    if (p_gen->is_first_item)
-    {
-        if (!json_stream_gen_printf(p_gen, p_gen->chunk_buf_idx, "}"))
-        {
-            return false;
-        }
-    }
-    else
-    {
-        if (!json_stream_gen_printf(
-                p_gen,
-                p_gen->chunk_buf_idx,
-                "%s%.*s}",
-                p_gen->p_eol,
-                (p_gen->cur_nesting_level - 1) * p_gen->cfg.indentation,
-                p_gen->p_indent_filling))
-        {
-            return false;
-        }
-    }
-    p_gen->cur_nesting_level -= 1;
-    p_gen->is_first_item = false;
-    return true;
-}
-
-bool
-json_stream_gen_start_array(json_stream_gen_t* const p_gen, const char* const p_name)
-{
-    if (p_gen->cur_nesting_level == p_gen->cfg.max_nesting_level)
-    {
-        p_gen->flag_new_data_added = true;
-        return false;
-    }
-    const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
-    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
-    {
-        return false;
-    }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "["))
-    {
-        return false;
-    }
-    p_gen->cur_nesting_level += 1;
-    p_gen->is_first_item = true;
-    return true;
+    return json_stream_gen_end_obj_or_array(p_gen, '}');
 }
 
 bool
 json_stream_gen_end_array(json_stream_gen_t* const p_gen)
 {
-    if (0 == p_gen->cur_nesting_level)
-    {
-        p_gen->flag_new_data_added = true;
-        return false;
-    }
-    if (p_gen->is_first_item)
-    {
-        if (!json_stream_gen_printf(p_gen, p_gen->chunk_buf_idx, "]"))
-        {
-            return false;
-        }
-    }
-    else
-    {
-        if (!json_stream_gen_printf(
-                p_gen,
-                p_gen->chunk_buf_idx,
-                "%s%.*s]",
-                p_gen->p_eol,
-                (p_gen->cur_nesting_level - 1) * p_gen->cfg.indentation,
-                p_gen->p_indent_filling))
-        {
-            return false;
-        }
-    }
-    p_gen->cur_nesting_level -= 1;
-    p_gen->is_first_item = false;
-    return true;
+    return json_stream_gen_end_obj_or_array(p_gen, ']');
 }
 
 static bool
