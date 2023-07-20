@@ -298,8 +298,8 @@ json_stream_gen_calc_size(json_stream_gen_t* const p_gen)
         return -1;
     }
 
-    ssize_t     json_len = 0;
-    const char* p_chunk  = NULL;
+    json_stream_gen_size_t json_len = 0;
+    const char*            p_chunk  = NULL;
     while (true)
     {
         p_chunk = json_stream_gen_get_next_chunk(p_gen);
@@ -313,7 +313,7 @@ json_stream_gen_calc_size(json_stream_gen_t* const p_gen)
         {
             break;
         }
-        json_len += (ssize_t)chunk_len;
+        json_len += (json_stream_gen_size_t)chunk_len;
     }
 
     json_stream_gen_reset(p_gen);
@@ -740,8 +740,9 @@ json_stream_gen_float_to_str(
             len = snprintf(p_str->buffer, sizeof(p_str->buffer), "%1.7g", val);
 
             // Check if the original double value can be recovered
-            float test = NAN;
-            if ((sscanf(p_str->buffer, "%g", &test) != 1) || (*(const uint32_t*)&test != *(const uint32_t*)&val))
+            char*       p_end = NULL;
+            const float test  = strtof(p_str->buffer, &p_end);
+            if (('\0' != *p_end) || (*(const uint32_t*)&test != *(const uint32_t*)&val))
             {
                 // If not, print with more decimal places of precision
                 len = snprintf(p_str->buffer, sizeof(p_str->buffer), "%1.9g", val);
@@ -823,8 +824,9 @@ json_stream_gen_double_to_str(
             len = snprintf(p_str->buffer, sizeof(p_str->buffer), "%1.15g", val);
 
             // Check if the original double value can be recovered
-            double test = NAN;
-            if ((sscanf(p_str->buffer, "%lg", &test) != 1) || (*(const uint64_t*)&test != *(const uint64_t*)&val))
+            char*        p_end = NULL;
+            const double test  = strtod(p_str->buffer, &p_end);
+            if (('\0' != *p_end) || (*(const uint64_t*)&test != *(const uint64_t*)&val))
             {
                 // If not, print with more decimal places of precision
                 len = snprintf(p_str->buffer, sizeof(p_str->buffer), "%1.17g", val);
