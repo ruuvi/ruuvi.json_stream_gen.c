@@ -50,8 +50,19 @@ struct json_stream_gen_t
     char                               p_delimiter[2];
 };
 
+/**
+ * @brief typedef for basic 'int' type
+ *
+ * MISRA C:2004, 6.3 - typedefs that indicate size and signedness should be used in place of the basic types.
+ * In adherence to the MISRA C:2004, 6.3 guideline, this typedef provides a layer of abstraction that
+ * promotes portability and readability by denoting the size and signedness of this basic integer type.
+ * Instead of using 'int' directly, using this typedef clarifies that the integer is expected to behave
+ * according to these particular constraints.
+ */
+typedef int jsg_int_t;
+
 static void
-json_stream_gen_copy_non_zero_cfg_fields(json_stream_gen_cfg_t* const p_dst, const json_stream_gen_cfg_t* const p_src)
+jsg_copy_non_zero_cfg_fields(json_stream_gen_cfg_t* const p_dst, const json_stream_gen_cfg_t* const p_src)
 {
     if (0 != p_src->max_chunk_size)
     {
@@ -94,7 +105,7 @@ json_stream_gen_create(
     }
     if (NULL != p_cfg)
     {
-        json_stream_gen_copy_non_zero_cfg_fields(&cfg, p_cfg);
+        jsg_copy_non_zero_cfg_fields(&cfg, p_cfg);
     }
     if (cfg.max_chunk_size < JSON_STREAM_GEN_CFG_MIN_CHUNK_SIZE)
     {
@@ -115,7 +126,7 @@ json_stream_gen_create(
     mem_size += cfg.max_chunk_size;
     if (cfg.flag_formatted_json)
     {
-        mem_size += cfg.max_nesting_level * cfg.indentation + 1;
+        mem_size += (cfg.max_nesting_level * cfg.indentation) + 1;
     }
     else
     {
@@ -139,8 +150,9 @@ json_stream_gen_create(
     p_gen->p_indent_filling = (char*)p_gen->p_chunk_buf + cfg.max_chunk_size;
     if (cfg.flag_formatted_json)
     {
-        memset(p_gen->p_indent_filling, cfg.indentation_mark, cfg.max_nesting_level * cfg.indentation);
-        p_gen->p_indent_filling[cfg.max_nesting_level * cfg.indentation] = '\0';
+        const size_t indent = (size_t)cfg.indentation * cfg.max_nesting_level;
+        memset(p_gen->p_indent_filling, cfg.indentation_mark, indent);
+        p_gen->p_indent_filling[indent] = '\0';
     }
     else
     {
@@ -181,16 +193,12 @@ json_stream_gen_delete(json_stream_gen_t** p_p_gen)
 }
 
 static bool
-json_stream_gen_vprintf(
-    json_stream_gen_t* const p_gen,
-    const size_t             saved_chunk_buf_idx,
-    const char* const        p_fmt,
-    va_list                  args)
+jsg_vprintf(json_stream_gen_t* const p_gen, const size_t saved_chunk_buf_idx, const char* const p_fmt, va_list p_args)
 {
     p_gen->flag_new_data_added = true;
     char* const  p_buf         = &p_gen->p_chunk_buf[p_gen->chunk_buf_idx];
     const size_t remaining_len = p_gen->cfg.max_chunk_size - p_gen->chunk_buf_idx;
-    const int    len           = vsnprintf(p_buf, remaining_len, p_fmt, args);
+    const int    len           = vsnprintf(p_buf, remaining_len, p_fmt, p_args);
     if (len >= (int)remaining_len)
     {
         p_gen->chunk_buf_idx                     = saved_chunk_buf_idx;
@@ -202,45 +210,78 @@ json_stream_gen_vprintf(
 }
 
 __attribute__((format(printf, 3, 4))) static bool
-json_stream_gen_printf(json_stream_gen_t* const p_gen, const size_t saved_chunk_buf_idx, const char* const p_fmt, ...)
+jsg_printf(json_stream_gen_t* const p_gen, const size_t saved_chunk_buf_idx, const char* const p_fmt, ...)
 {
     va_list args;
     va_start(args, p_fmt);
-    const bool res = json_stream_gen_vprintf(p_gen, saved_chunk_buf_idx, p_fmt, args);
+    const bool res = jsg_vprintf(p_gen, saved_chunk_buf_idx, p_fmt, args);
     va_end(args);
     return res;
 }
 
 static bool
-json_stream_gen_step(json_stream_gen_t* const p_gen)
+jsg_step_json_opening_bracket(json_stream_gen_t* const p_gen)
+{
+    if (p_gen->cur_nesting_level >= p_gen->cfg.max_nesting_level)
+    {
+        return false;
+    }
+    const jsg_int_t indent = (jsg_int_t)(p_gen->cur_nesting_level * p_gen->cfg.indentation);
+    if (!jsg_printf(p_gen, p_gen->chunk_buf_idx, "%.*s{", indent, p_gen->p_indent_filling))
+    {
+        return false;
+    }
+    p_gen->json_gen_state = JSON_STREAM_GEN_STATE_GENERATING_ITEMS;
+    p_gen->cur_nesting_level += 1;
+    return true;
+}
+
+static bool
+jsg_step_generating_items(json_stream_gen_t* const p_gen)
+{
+    p_gen->flag_new_data_added = false;
+    if (!p_gen->cb_gen_next(p_gen, p_gen->p_ctx))
+    {
+        if (p_gen->flag_new_data_added && (0 == p_gen->chunk_buf_idx))
+        {
+            p_gen->json_gen_state = JSON_STREAM_GEN_STATE_ERROR_INSUFFICIENT_BUFFER;
+        }
+        return false;
+    }
+    return true;
+}
+
+static bool
+jsg_step_json_closing_bracket(json_stream_gen_t* const p_gen)
+{
+    if (0 == p_gen->cur_nesting_level)
+    {
+        return false;
+    }
+    const jsg_int_t indent = (jsg_int_t)((p_gen->cur_nesting_level - 1) * p_gen->cfg.indentation);
+    if (!jsg_printf(p_gen, p_gen->chunk_buf_idx, "%s%.*s}", p_gen->p_eol, indent, p_gen->p_indent_filling))
+    {
+        return false;
+    }
+    p_gen->cur_nesting_level -= 1;
+    p_gen->json_gen_state = JSON_STREAM_GEN_STATE_FINISHED;
+    return true;
+}
+
+static bool
+jsg_get_next_chunk_step(json_stream_gen_t* const p_gen)
 {
     switch (p_gen->json_gen_state)
     {
         case JSON_STREAM_GEN_STATE_JSON_OPENING_BRACKET:
-            if (p_gen->cur_nesting_level >= p_gen->cfg.max_nesting_level)
+            if (!jsg_step_json_opening_bracket(p_gen))
             {
                 return false;
             }
-            if (!json_stream_gen_printf(
-                    p_gen,
-                    p_gen->chunk_buf_idx,
-                    "%.*s{",
-                    p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                    p_gen->p_indent_filling))
-            {
-                return false;
-            }
-            p_gen->json_gen_state = JSON_STREAM_GEN_STATE_GENERATING_ITEMS;
-            p_gen->cur_nesting_level += 1;
             break;
         case JSON_STREAM_GEN_STATE_GENERATING_ITEMS:
-            p_gen->flag_new_data_added = false;
-            if (!p_gen->cb_gen_next(p_gen, p_gen->p_ctx))
+            if (!jsg_step_generating_items(p_gen))
             {
-                if (p_gen->flag_new_data_added && (0 == p_gen->chunk_buf_idx))
-                {
-                    p_gen->json_gen_state = JSON_STREAM_GEN_STATE_ERROR_INSUFFICIENT_BUFFER;
-                }
                 return false;
             }
             if (!p_gen->flag_new_data_added)
@@ -250,25 +291,12 @@ json_stream_gen_step(json_stream_gen_t* const p_gen)
             }
             break;
         case JSON_STREAM_GEN_STATE_JSON_CLOSING_BRACKET:
-            if (0 == p_gen->cur_nesting_level)
+            if (!jsg_step_json_closing_bracket(p_gen))
             {
                 return false;
             }
-            if (!json_stream_gen_printf(
-                    p_gen,
-                    p_gen->chunk_buf_idx,
-                    "%s%.*s}",
-                    p_gen->p_eol,
-                    (p_gen->cur_nesting_level - 1) * p_gen->cfg.indentation,
-                    p_gen->p_indent_filling))
-            {
-                return false;
-            }
-            p_gen->cur_nesting_level -= 1;
-            p_gen->json_gen_state = JSON_STREAM_GEN_STATE_FINISHED;
             break;
         case JSON_STREAM_GEN_STATE_FINISHED:
-            return false;
         case JSON_STREAM_GEN_STATE_ERROR_INSUFFICIENT_BUFFER:
             return false;
     }
@@ -280,7 +308,7 @@ json_stream_gen_get_next_chunk(json_stream_gen_t* const p_gen)
 {
     p_gen->chunk_buf_idx  = 0;
     p_gen->p_chunk_buf[0] = '\0';
-    while (json_stream_gen_step(p_gen))
+    while (jsg_get_next_chunk_step(p_gen))
     {
     }
     if (JSON_STREAM_GEN_STATE_ERROR_INSUFFICIENT_BUFFER == p_gen->json_gen_state)
@@ -331,17 +359,19 @@ json_stream_gen_reset(json_stream_gen_t* const p_gen)
 }
 
 static bool
-json_stream_gen_print_prefix(json_stream_gen_t* const p_gen, const size_t saved_chunk_buf_idx, const char* const p_name)
+jsg_print_prefix(json_stream_gen_t* const p_gen, const size_t saved_chunk_buf_idx, const char* const p_name)
 {
+    const jsg_int_t   indent = (jsg_int_t)(p_gen->cur_nesting_level * p_gen->cfg.indentation);
+    const char* const p_sep  = p_gen->is_first_item ? "" : ",";
     if (NULL != p_name)
     {
-        if (!json_stream_gen_printf(
+        if (!jsg_printf(
                 p_gen,
                 saved_chunk_buf_idx,
                 "%s%s%.*s\"%s\":%s",
-                p_gen->is_first_item ? "" : ",",
+                p_sep,
                 p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
+                indent,
                 p_gen->p_indent_filling,
                 p_name,
                 p_gen->p_delimiter))
@@ -351,14 +381,7 @@ json_stream_gen_print_prefix(json_stream_gen_t* const p_gen, const size_t saved_
     }
     else
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                saved_chunk_buf_idx,
-                "%s%s%.*s",
-                p_gen->is_first_item ? "" : ",",
-                p_gen->p_eol,
-                p_gen->cur_nesting_level * p_gen->cfg.indentation,
-                p_gen->p_indent_filling))
+        if (!jsg_printf(p_gen, saved_chunk_buf_idx, "%s%s%.*s", p_sep, p_gen->p_eol, indent, p_gen->p_indent_filling))
         {
             return false;
         }
@@ -367,7 +390,7 @@ json_stream_gen_print_prefix(json_stream_gen_t* const p_gen, const size_t saved_
 }
 
 static bool
-json_stream_gen_start_obj_or_arr(json_stream_gen_t* const p_gen, const char* const p_name, const char symbol)
+jsg_start_obj_or_arr(json_stream_gen_t* const p_gen, const char* const p_name, const char symbol)
 {
     if (p_gen->cur_nesting_level == p_gen->cfg.max_nesting_level)
     {
@@ -376,11 +399,11 @@ json_stream_gen_start_obj_or_arr(json_stream_gen_t* const p_gen, const char* con
     }
 
     const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
-    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
+    if (!jsg_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
         return false;
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%c", symbol))
+    if (!jsg_printf(p_gen, saved_chunk_buf_idx, "%c", symbol))
     {
         return false;
     }
@@ -393,17 +416,17 @@ json_stream_gen_start_obj_or_arr(json_stream_gen_t* const p_gen, const char* con
 bool
 json_stream_gen_start_object(json_stream_gen_t* const p_gen, const char* const p_name)
 {
-    return json_stream_gen_start_obj_or_arr(p_gen, p_name, '{');
+    return jsg_start_obj_or_arr(p_gen, p_name, '{');
 }
 
 bool
 json_stream_gen_start_array(json_stream_gen_t* const p_gen, const char* const p_name)
 {
-    return json_stream_gen_start_obj_or_arr(p_gen, p_name, '[');
+    return jsg_start_obj_or_arr(p_gen, p_name, '[');
 }
 
 static bool
-json_stream_gen_end_obj_or_array(json_stream_gen_t* const p_gen, const char symbol)
+jsg_end_obj_or_array(json_stream_gen_t* const p_gen, const char symbol)
 {
     if (0 == p_gen->cur_nesting_level)
     {
@@ -412,21 +435,15 @@ json_stream_gen_end_obj_or_array(json_stream_gen_t* const p_gen, const char symb
     }
     if (p_gen->is_first_item)
     {
-        if (!json_stream_gen_printf(p_gen, p_gen->chunk_buf_idx, "%c", symbol))
+        if (!jsg_printf(p_gen, p_gen->chunk_buf_idx, "%c", symbol))
         {
             return false;
         }
     }
     else
     {
-        if (!json_stream_gen_printf(
-                p_gen,
-                p_gen->chunk_buf_idx,
-                "%s%.*s%c",
-                p_gen->p_eol,
-                (p_gen->cur_nesting_level - 1) * p_gen->cfg.indentation,
-                p_gen->p_indent_filling,
-                symbol))
+        const jsg_int_t indent = (jsg_int_t)((p_gen->cur_nesting_level - 1) * p_gen->cfg.indentation);
+        if (!jsg_printf(p_gen, p_gen->chunk_buf_idx, "%s%.*s%c", p_gen->p_eol, indent, p_gen->p_indent_filling, symbol))
         {
             return false;
         }
@@ -439,17 +456,17 @@ json_stream_gen_end_obj_or_array(json_stream_gen_t* const p_gen, const char symb
 bool
 json_stream_gen_end_object(json_stream_gen_t* const p_gen)
 {
-    return json_stream_gen_end_obj_or_array(p_gen, '}');
+    return jsg_end_obj_or_array(p_gen, '}');
 }
 
 bool
 json_stream_gen_end_array(json_stream_gen_t* const p_gen)
 {
-    return json_stream_gen_end_obj_or_array(p_gen, ']');
+    return jsg_end_obj_or_array(p_gen, ']');
 }
 
 static bool
-json_stream_gen_check_char_escaping(const char input_char, char* const p_output_char)
+jsg_check_char_escaping(const char input_char, char* const p_output_char)
 {
     char output_char        = input_char;
     bool flag_need_escaping = false;
@@ -494,11 +511,11 @@ json_stream_gen_check_char_escaping(const char input_char, char* const p_output_
 }
 
 static bool
-json_stream_gen_check_if_str_need_escaping(const char* const p_val)
+jsg_check_if_str_need_escaping(const char* const p_val)
 {
     for (const char* p_char = p_val; '\0' != *p_char; p_char++)
     {
-        if (json_stream_gen_check_char_escaping(*p_char, NULL))
+        if (jsg_check_char_escaping(*p_char, NULL))
         {
             return true;
         }
@@ -513,17 +530,17 @@ json_stream_gen_add_string(json_stream_gen_t* const p_gen, const char* const p_n
     {
         return json_stream_gen_add_null(p_gen, p_name);
     }
-    if (!json_stream_gen_check_if_str_need_escaping(p_val))
+    if (!jsg_check_if_str_need_escaping(p_val))
     {
         return json_stream_gen_add_raw_string(p_gen, p_name, p_val);
     }
 
     const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
-    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
+    if (!jsg_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
         return false;
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "\""))
+    if (!jsg_printf(p_gen, saved_chunk_buf_idx, "\""))
     {
         return false;
     }
@@ -531,23 +548,23 @@ json_stream_gen_add_string(json_stream_gen_t* const p_gen, const char* const p_n
     for (const char* p_char = p_val; '\0' != *p_char; p_char++)
     {
         char       output_char = '\0';
-        const bool flag_escape = json_stream_gen_check_char_escaping(*p_char, &output_char);
+        const bool flag_escape = jsg_check_char_escaping(*p_char, &output_char);
         if (flag_escape)
         {
-            if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "\\%c", output_char))
+            if (!jsg_printf(p_gen, saved_chunk_buf_idx, "\\%c", output_char))
             {
                 return false;
             }
         }
         else
         {
-            if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%c", *p_char))
+            if (!jsg_printf(p_gen, saved_chunk_buf_idx, "%c", *p_char))
             {
                 return false;
             }
         }
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "\""))
+    if (!jsg_printf(p_gen, saved_chunk_buf_idx, "\""))
     {
         return false;
     }
@@ -563,11 +580,11 @@ json_stream_gen_add_raw_string(json_stream_gen_t* const p_gen, const char* const
         return json_stream_gen_add_null(p_gen, p_name);
     }
     const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
-    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
+    if (!jsg_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
         return false;
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "\"%s\"", p_val))
+    if (!jsg_printf(p_gen, saved_chunk_buf_idx, "\"%s\"", p_val))
     {
         return false;
     }
@@ -579,11 +596,11 @@ bool
 json_stream_gen_add_int32(json_stream_gen_t* const p_gen, const char* const p_name, const int32_t val)
 {
     const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
-    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
+    if (!jsg_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
         return false;
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%" PRId32, val))
+    if (!jsg_printf(p_gen, saved_chunk_buf_idx, "%" PRId32, val))
     {
         return false;
     }
@@ -595,11 +612,11 @@ bool
 json_stream_gen_add_uint32(json_stream_gen_t* const p_gen, const char* const p_name, const uint32_t val)
 {
     const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
-    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
+    if (!jsg_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
         return false;
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%" PRIu32, val))
+    if (!jsg_printf(p_gen, saved_chunk_buf_idx, "%" PRIu32, val))
     {
         return false;
     }
@@ -611,11 +628,11 @@ bool
 json_stream_gen_add_int64(json_stream_gen_t* const p_gen, const char* const p_name, const int64_t val)
 {
     const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
-    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
+    if (!jsg_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
         return false;
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%" PRId64, val))
+    if (!jsg_printf(p_gen, saved_chunk_buf_idx, "%" PRId64, val))
     {
         return false;
     }
@@ -627,11 +644,11 @@ bool
 json_stream_gen_add_uint64(json_stream_gen_t* const p_gen, const char* const p_name, const uint64_t val)
 {
     const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
-    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
+    if (!jsg_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
         return false;
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%" PRIu64, val))
+    if (!jsg_printf(p_gen, saved_chunk_buf_idx, "%" PRIu64, val))
     {
         return false;
     }
@@ -643,11 +660,11 @@ bool
 json_stream_gen_add_bool(json_stream_gen_t* const p_gen, const char* const p_name, const bool val)
 {
     const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
-    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
+    if (!jsg_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
         return false;
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%s", val ? "true" : "false"))
+    if (!jsg_printf(p_gen, saved_chunk_buf_idx, "%s", val ? "true" : "false"))
     {
         return false;
     }
@@ -659,11 +676,11 @@ bool
 json_stream_gen_add_null(json_stream_gen_t* const p_gen, const char* const p_name)
 {
     const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
-    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
+    if (!jsg_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
         return false;
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%s", "null"))
+    if (!jsg_printf(p_gen, saved_chunk_buf_idx, "%s", "null"))
     {
         return false;
     }
@@ -672,7 +689,7 @@ json_stream_gen_add_null(json_stream_gen_t* const p_gen, const char* const p_nam
 }
 
 static char
-json_stream_gen_get_decimal_point(void)
+jsg_get_decimal_point(void)
 {
     struct lconv* const p_lc = localeconv();
     if (NULL == p_lc)
@@ -688,13 +705,13 @@ typedef struct json_stream_gen_float_str_buf_t
 } json_stream_gen_float_str_buf_t;
 
 static bool
-json_stream_gen_float_to_str(
+jsg_float_to_str(
     const float                               val,
     const bool                                flag_fixed_point,
     const json_stream_gen_ieee754_precision_t precision,
     json_stream_gen_float_str_buf_t* const    p_str)
 {
-    if (isnanf(val) || isinff(val))
+    if ((0 != isnanf(val)) || (0 != isinff(val)))
     {
         return false;
     }
@@ -729,7 +746,7 @@ json_stream_gen_float_to_str(
         return false;
     }
 
-    char* p_decimal_point = strchr(p_str->buffer, json_stream_gen_get_decimal_point());
+    char* p_decimal_point = strchr(p_str->buffer, jsg_get_decimal_point());
     if (NULL != p_decimal_point)
     {
         *p_decimal_point = '.';
@@ -738,7 +755,7 @@ json_stream_gen_float_to_str(
 }
 
 static bool
-json_stream_gen_add_float_with_precision(
+jsg_add_float_with_precision(
     json_stream_gen_t* const                  p_gen,
     const char* const                         p_name,
     const float                               val,
@@ -748,17 +765,17 @@ json_stream_gen_add_float_with_precision(
     p_gen->flag_new_data_added = true;
 
     json_stream_gen_float_str_buf_t float_str = { 0 };
-    if (!json_stream_gen_float_to_str(val, flag_fixed_point, precision, &float_str))
+    if (!jsg_float_to_str(val, flag_fixed_point, precision, &float_str))
     {
         return json_stream_gen_add_null(p_gen, p_name);
     }
 
     const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
-    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
+    if (!jsg_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
         return false;
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%s", float_str.buffer))
+    if (!jsg_printf(p_gen, saved_chunk_buf_idx, "%s", float_str.buffer))
     {
         return false;
     }
@@ -772,13 +789,13 @@ typedef struct json_stream_gen_double_str_buf_t
 } json_stream_gen_double_str_buf_t;
 
 static bool
-json_stream_gen_double_to_str(
+jsg_double_to_str(
     const double                              val,
     const bool                                flag_fixed_point,
     const json_stream_gen_ieee754_precision_t precision,
     json_stream_gen_double_str_buf_t* const   p_str)
 {
-    if (isnan(val) || isinf(val))
+    if ((0 != isnan(val)) || (0 != isinf(val)))
     {
         return false;
     }
@@ -813,7 +830,7 @@ json_stream_gen_double_to_str(
         return false;
     }
 
-    char* p_decimal_point = strchr(p_str->buffer, json_stream_gen_get_decimal_point());
+    char* p_decimal_point = strchr(p_str->buffer, jsg_get_decimal_point());
     if (NULL != p_decimal_point)
     {
         *p_decimal_point = '.';
@@ -822,7 +839,7 @@ json_stream_gen_double_to_str(
 }
 
 static bool
-json_stream_gen_add_double_with_precision(
+jsg_add_double_with_precision(
     json_stream_gen_t* const            p_gen,
     const char* const                   p_name,
     const double                        val,
@@ -832,16 +849,16 @@ json_stream_gen_add_double_with_precision(
     p_gen->flag_new_data_added = true;
 
     json_stream_gen_double_str_buf_t double_str = { 0 };
-    if (!json_stream_gen_double_to_str(val, flag_fixed_point, precision, &double_str))
+    if (!jsg_double_to_str(val, flag_fixed_point, precision, &double_str))
     {
         return json_stream_gen_add_null(p_gen, p_name);
     }
     const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
-    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
+    if (!jsg_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
         return false;
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%s", double_str.buffer))
+    if (!jsg_printf(p_gen, saved_chunk_buf_idx, "%s", double_str.buffer))
     {
         return false;
     }
@@ -856,7 +873,7 @@ json_stream_gen_add_float(
     const float                         val,
     json_stream_gen_ieee754_precision_t precision)
 {
-    return json_stream_gen_add_float_with_precision(p_gen, p_name, val, false, precision);
+    return jsg_add_float_with_precision(p_gen, p_name, val, false, precision);
 }
 
 bool
@@ -866,7 +883,7 @@ json_stream_gen_add_double(
     const double                        val,
     json_stream_gen_ieee754_precision_t precision)
 {
-    return json_stream_gen_add_double_with_precision(p_gen, p_name, val, false, precision);
+    return jsg_add_double_with_precision(p_gen, p_name, val, false, precision);
 }
 
 bool
@@ -876,12 +893,7 @@ json_stream_gen_add_float_fixed_point(
     const float                          val,
     json_stream_gen_num_decimals_float_e num_decimals)
 {
-    return json_stream_gen_add_float_with_precision(
-        p_gen,
-        p_name,
-        val,
-        true,
-        (json_stream_gen_ieee754_precision_t)num_decimals);
+    return jsg_add_float_with_precision(p_gen, p_name, val, true, (json_stream_gen_ieee754_precision_t)num_decimals);
 }
 
 bool
@@ -891,16 +903,11 @@ json_stream_gen_add_double_fixed_point(
     const double                          val,
     json_stream_gen_num_decimals_double_e num_decimals)
 {
-    return json_stream_gen_add_double_with_precision(
-        p_gen,
-        p_name,
-        val,
-        true,
-        (json_stream_gen_ieee754_precision_t)num_decimals);
+    return jsg_add_double_with_precision(p_gen, p_name, val, true, (json_stream_gen_ieee754_precision_t)num_decimals);
 }
 
 static bool
-json_stream_gen_limited_float_to_str(
+jsg_limited_float_to_str(
     const float                                val,
     const json_stream_gen_num_decimals_float_e num_decimals,
     json_stream_gen_float_str_buf_t* const     p_str)
@@ -913,7 +920,7 @@ json_stream_gen_limited_float_to_str(
     {
         return false;
     }
-    if (isnanf(val) || isinff(val))
+    if ((0 != isnanf(val)) || (0 != isinff(val)))
     {
         return false;
     }
@@ -926,7 +933,7 @@ json_stream_gen_limited_float_to_str(
     uint32_t multiplier  = g_multipliers_u32[num_decimals];
     int32_t  divider_cnt = 0;
     float    divider     = JSON_STREAM_GEN_CONST_FLOAT_1;
-    while (((abs_val * (float)multiplier / divider) > (float)(1U << FLT_MANT_DIG)))
+    while (((abs_val * (float)multiplier / divider) > (float)(1U << (uint32_t)FLT_MANT_DIG)))
     {
         if (multiplier > 1)
         {
@@ -987,17 +994,17 @@ json_stream_gen_add_float_limited_fixed_point(
     p_gen->flag_new_data_added = true;
 
     json_stream_gen_float_str_buf_t float_str = { 0 };
-    if (!json_stream_gen_limited_float_to_str(val, num_decimals, &float_str))
+    if (!jsg_limited_float_to_str(val, num_decimals, &float_str))
     {
         return json_stream_gen_add_null(p_gen, p_name);
     }
 
     const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
-    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
+    if (!jsg_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
         return false;
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%s", float_str.buffer))
+    if (!jsg_printf(p_gen, saved_chunk_buf_idx, "%s", float_str.buffer))
     {
         return false;
     }
@@ -1006,7 +1013,7 @@ json_stream_gen_add_float_limited_fixed_point(
 }
 
 static bool
-json_stream_gen_limited_double_to_str(
+jsg_limited_double_to_str(
     const double                                val,
     const json_stream_gen_num_decimals_double_e num_decimals,
     json_stream_gen_double_str_buf_t* const     p_str)
@@ -1022,7 +1029,7 @@ json_stream_gen_limited_double_to_str(
     {
         return false;
     }
-    if (isnan(val) || isinf(val))
+    if ((0 != isnan(val)) || (0 != isinf(val)))
     {
         return false;
     }
@@ -1035,7 +1042,7 @@ json_stream_gen_limited_double_to_str(
     uint32_t multiplier  = g_multipliers_u64[num_decimals];
     int32_t  divider_cnt = 0;
     double   divider     = JSON_STREAM_GEN_CONST_DOUBLE_1;
-    while (((abs_val * (double)multiplier / divider) > (double)((uint64_t)1LU << DBL_MANT_DIG)))
+    while (((abs_val * (double)multiplier / divider) > (double)((uint64_t)1LU << (uint32_t)DBL_MANT_DIG)))
     {
         if (multiplier > 1)
         {
@@ -1096,17 +1103,17 @@ json_stream_gen_add_double_limited_fixed_point(
     p_gen->flag_new_data_added = true;
 
     json_stream_gen_double_str_buf_t double_str = { 0 };
-    if (!json_stream_gen_limited_double_to_str(val, num_decimals, &double_str))
+    if (!jsg_limited_double_to_str(val, num_decimals, &double_str))
     {
         return json_stream_gen_add_null(p_gen, p_name);
     }
 
     const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
-    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
+    if (!jsg_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
         return false;
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%s", double_str.buffer))
+    if (!jsg_printf(p_gen, saved_chunk_buf_idx, "%s", double_str.buffer))
     {
         return false;
     }
@@ -1122,22 +1129,22 @@ json_stream_gen_add_hex_buf(
     size_t                   buf_len)
 {
     const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
-    if (!json_stream_gen_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
+    if (!jsg_print_prefix(p_gen, saved_chunk_buf_idx, p_name))
     {
         return false;
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "\""))
+    if (!jsg_printf(p_gen, saved_chunk_buf_idx, "\""))
     {
         return false;
     }
     for (size_t i = 0; i < buf_len; ++i)
     {
-        if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%02X", p_buf[i]))
+        if (!jsg_printf(p_gen, saved_chunk_buf_idx, "%02X", p_buf[i]))
         {
             return false;
         }
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "\""))
+    if (!jsg_printf(p_gen, saved_chunk_buf_idx, "\""))
     {
         return false;
     }
