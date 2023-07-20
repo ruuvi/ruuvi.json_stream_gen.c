@@ -150,7 +150,7 @@ json_stream_gen_create(
         p_gen->p_ctx = NULL;
     }
 
-    p_gen->p_indent_filling = (char*)p_gen->p_chunk_buf + cfg.max_chunk_size;
+    p_gen->p_indent_filling = p_gen->p_chunk_buf + cfg.max_chunk_size;
     if (cfg.flag_formatted_json)
     {
         const size_t indent = (size_t)cfg.indentation * cfg.max_nesting_level;
@@ -198,11 +198,11 @@ json_stream_gen_delete(json_stream_gen_t** p_p_gen)
 static bool
 jsg_vprintf(json_stream_gen_t* const p_gen, const size_t saved_chunk_buf_idx, const char* const p_fmt, va_list p_args)
 {
-    p_gen->flag_new_data_added = true;
-    char* const  p_buf         = &p_gen->p_chunk_buf[p_gen->chunk_buf_idx];
-    const size_t remaining_len = p_gen->cfg.max_chunk_size - p_gen->chunk_buf_idx;
-    const int    len           = vsnprintf(p_buf, remaining_len, p_fmt, p_args);
-    if (len >= (int)remaining_len)
+    p_gen->flag_new_data_added    = true;
+    char* const     p_buf         = &p_gen->p_chunk_buf[p_gen->chunk_buf_idx];
+    const size_t    remaining_len = p_gen->cfg.max_chunk_size - p_gen->chunk_buf_idx;
+    const jsg_int_t len           = vsnprintf(p_buf, remaining_len, p_fmt, p_args);
+    if (len >= (jsg_int_t)remaining_len)
     {
         p_gen->chunk_buf_idx                     = saved_chunk_buf_idx;
         p_gen->p_chunk_buf[p_gen->chunk_buf_idx] = '\0';
@@ -517,7 +517,7 @@ jsg_check_char_escaping(const char input_char, char* const p_output_char)
 static bool
 jsg_check_if_str_need_escaping(const char* const p_val)
 {
-    for (const char* p_char = p_val; '\0' != *p_char; p_char++)
+    for (const char* p_char = p_val; '\0' != *p_char; ++p_char)
     {
         if (jsg_check_char_escaping(*p_char, NULL))
         {
@@ -549,7 +549,7 @@ json_stream_gen_add_string(json_stream_gen_t* const p_gen, const char* const p_n
         return false;
     }
 
-    for (const char* p_char = p_val; '\0' != *p_char; p_char++)
+    for (const char* p_char = p_val; '\0' != *p_char; ++p_char)
     {
         char       output_char = '\0';
         const bool flag_escape = jsg_check_char_escaping(*p_char, &output_char);
@@ -695,7 +695,7 @@ json_stream_gen_add_null(json_stream_gen_t* const p_gen, const char* const p_nam
 static char
 jsg_get_decimal_point(void)
 {
-    struct lconv* const p_lc = localeconv();
+    const struct lconv* const p_lc = localeconv();
     if (NULL == p_lc)
     {
         return '.';
@@ -719,7 +719,7 @@ jsg_float_to_str(
     {
         return false;
     }
-    int len = 0;
+    jsg_int_t len = 0;
     if (flag_fixed_point)
     {
         len = snprintf(p_str->buffer, sizeof(p_str->buffer), "%.*f", precision, val);
@@ -803,7 +803,7 @@ jsg_double_to_str(
     {
         return false;
     }
-    int len = 0;
+    jsg_int_t len = 0;
     if (flag_fixed_point)
     {
         len = snprintf(p_str->buffer, sizeof(p_str->buffer), "%.*f", precision, val);
@@ -971,7 +971,7 @@ jsg_limited_float_to_str(
         actual_num_decimals += 1;
     }
 
-    const int len = snprintf(
+    const jsg_int_t len = snprintf(
         p_str->buffer,
         sizeof(p_str->buffer),
         "%s"
@@ -1055,7 +1055,7 @@ jsg_limited_double_to_str(
     uint64_t multiplier  = g_multipliers_u64[num_decimals];
     int32_t  divider_cnt = 0;
     double_t divider     = JSON_STREAM_GEN_CONST_DOUBLE_1;
-    while (((abs_val * (double_t)multiplier) / divider) > (double_t)((uint64_t)1LU << (uint32_t)DBL_MANT_DIG))
+    while (((abs_val * (double_t)multiplier) / divider) > (double_t)(1LLU << (uint32_t)DBL_MANT_DIG))
     {
         if (multiplier > 1)
         {
@@ -1083,7 +1083,7 @@ jsg_limited_double_to_str(
         multiplier /= JSON_STREAM_GEN_CONST_U32_10;
         actual_num_decimals += 1;
     }
-    const int len = snprintf(
+    const jsg_int_t len = snprintf(
         p_str->buffer,
         sizeof(p_str->buffer),
         "%s"
