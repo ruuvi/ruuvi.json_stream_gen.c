@@ -12,10 +12,17 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <math.h>
+#include <float.h>
 #include <locale.h>
 
 #define JSON_STREAM_GEN_STR_BUF_SIZE_FLOAT  (16U)
 #define JSON_STREAM_GEN_STR_BUF_SIZE_DOUBLE (28U)
+
+#define JSON_STREAM_GEN_CONST_U32_10    (10U)
+#define JSON_STREAM_GEN_CONST_FLOAT_10  (10.0f)
+#define JSON_STREAM_GEN_CONST_DOUBLE_10 (10.0)
+#define JSON_STREAM_GEN_CONST_FLOAT_1   (1.0f)
+#define JSON_STREAM_GEN_CONST_DOUBLE_1  (1.0)
 
 typedef enum json_stream_gen_state_e
 {
@@ -920,6 +927,84 @@ json_stream_gen_add_double_fixed_point(
         (json_stream_gen_ieee754_precision_t)num_decimals);
 }
 
+static bool
+json_stream_gen_limited_float_to_str(
+    const float                                val,
+    const json_stream_gen_num_decimals_float_e num_decimals,
+    json_stream_gen_float_str_buf_t* const     p_str)
+{
+    static const uint32_t g_multipliers_u32[10] = { (uint32_t)1e+0, (uint32_t)1e+1, (uint32_t)1e+2, (uint32_t)1e+3,
+                                                    (uint32_t)1e+4, (uint32_t)1e+5, (uint32_t)1e+6, (uint32_t)1e+7,
+                                                    (uint32_t)1e+8, (uint32_t)1e+9 };
+
+    if (num_decimals >= sizeof(g_multipliers_u32) / sizeof(g_multipliers_u32[0]))
+    {
+        return false;
+    }
+    if (isnanf(val) || isinff(val))
+    {
+        return false;
+    }
+    const float abs_val = fabsf(val);
+    if (abs_val > (float)UINT32_MAX)
+    {
+        return false;
+    }
+
+    uint32_t multiplier  = g_multipliers_u32[num_decimals];
+    int32_t  divider_cnt = 0;
+    float    divider     = JSON_STREAM_GEN_CONST_FLOAT_1;
+    while (((abs_val * (float)multiplier / divider) > (float)(1U << FLT_MANT_DIG)))
+    {
+        if (multiplier > 1)
+        {
+            multiplier /= JSON_STREAM_GEN_CONST_U32_10;
+        }
+        else
+        {
+            divider_cnt += 1;
+            divider *= JSON_STREAM_GEN_CONST_FLOAT_10;
+        }
+    }
+    const char zeros_str[] = "000";
+    if (divider_cnt >= (int32_t)(sizeof(zeros_str)))
+    {
+        return false;
+    }
+
+    const uint32_t val_u32         = (uint32_t)lrintf(abs_val * (float)multiplier / divider);
+    const uint32_t integral_part   = val_u32 / multiplier;
+    const uint32_t fractional_part = val_u32 % multiplier;
+
+    json_stream_gen_num_decimals_t actual_num_decimals = 0;
+    while (multiplier > 1)
+    {
+        multiplier /= JSON_STREAM_GEN_CONST_U32_10;
+        actual_num_decimals += 1;
+    }
+
+    const int len = snprintf(
+        p_str->buffer,
+        sizeof(p_str->buffer),
+        "%s"
+        "%" PRIu32
+        "%.*s"
+        "%s"
+        "%.*" PRIu32,
+        (val < 0) ? "-" : "",
+        integral_part,
+        divider_cnt,
+        zeros_str,
+        (0 != actual_num_decimals) ? "." : "",
+        actual_num_decimals,
+        fractional_part);
+    if ((len < 0) || ((size_t)len >= sizeof(p_str->buffer)))
+    {
+        return false;
+    }
+    return true;
+}
+
 bool
 json_stream_gen_add_float_limited_fixed_point(
     json_stream_gen_t* const                   p_gen,
@@ -927,100 +1012,12 @@ json_stream_gen_add_float_limited_fixed_point(
     const float                                val,
     const json_stream_gen_num_decimals_float_e num_decimals)
 {
-    static const uint32_t multipliers[10] = { 1e+0, 1e+1, 1e+2, 1e+3, 1e+4, 1e+5, 1e+6, 1e+7, 1e+8, 1e+9 };
-
     p_gen->flag_new_data_added = true;
 
-    if (num_decimals >= sizeof(multipliers) / sizeof(multipliers[0]))
-    {
-        return false;
-    }
-    if (isnanf(val) || isinff(val))
+    json_stream_gen_float_str_buf_t float_str = { 0 };
+    if (!json_stream_gen_limited_float_to_str(val, num_decimals, &float_str))
     {
         return json_stream_gen_add_null(p_gen, p_name);
-    }
-    const float abs_val = fabsf(val);
-    if (abs_val > (float)UINT32_MAX)
-    {
-        return json_stream_gen_add_null(p_gen, p_name);
-    }
-
-    uint32_t multiplier  = multipliers[num_decimals];
-    int32_t  divider_cnt = 0;
-    float    divider     = 1.0f;
-    while (((abs_val * (float)multiplier / divider) > (float)(1U << 24U)))
-    {
-        if (multiplier > 1)
-        {
-            multiplier /= 10;
-        }
-        else
-        {
-            divider_cnt += 1;
-            divider *= 10.0f;
-        }
-    }
-    const char zeros_str[] = "000";
-    if (divider_cnt > (int32_t)(sizeof(zeros_str) - 1))
-    {
-        return json_stream_gen_add_null(p_gen, p_name);
-    }
-
-    const uint32_t val_u32         = (uint32_t)lrintf(abs_val * (float)multiplier / divider);
-    const uint32_t integral_part   = val_u32 / multiplier;
-    const uint32_t fractional_part = val_u32 % multiplier;
-
-    char tmp_buffer[JSON_STREAM_GEN_STR_BUF_SIZE_FLOAT];
-    int  len = 0;
-    if (1 == multiplier)
-    {
-        if (0 == divider_cnt)
-        {
-            len = snprintf(
-                tmp_buffer,
-                sizeof(tmp_buffer),
-                "%s"
-                "%" PRIu32,
-                (val < 0) ? "-" : "",
-                integral_part);
-        }
-        else
-        {
-            len = snprintf(
-                tmp_buffer,
-                sizeof(tmp_buffer),
-                "%s"
-                "%" PRIu32 "%.*s",
-                (val < 0) ? "-" : "",
-                integral_part,
-                divider_cnt,
-                zeros_str);
-        }
-    }
-    else
-    {
-        json_stream_gen_num_decimals_t actual_num_decimals = 0;
-        while (multiplier > 1)
-        {
-            multiplier /= 10;
-            actual_num_decimals += 1;
-        }
-        len = snprintf(
-            tmp_buffer,
-            sizeof(tmp_buffer),
-            "%s"
-            "%" PRIu32
-            "."
-            "%.*" PRIu32,
-            (val < 0) ? "-" : "",
-            integral_part,
-            actual_num_decimals,
-            fractional_part);
-    }
-
-    if ((len < 0) || ((size_t)len >= sizeof(tmp_buffer)))
-    {
-        return false;
     }
 
     const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
@@ -1028,11 +1025,92 @@ json_stream_gen_add_float_limited_fixed_point(
     {
         return false;
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%s", tmp_buffer))
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%s", float_str.buffer))
     {
         return false;
     }
     p_gen->is_first_item = false;
+    return true;
+}
+
+static bool
+json_stream_gen_limited_double_to_str(
+    const double                                val,
+    const json_stream_gen_num_decimals_double_e num_decimals,
+    json_stream_gen_double_str_buf_t* const     p_str)
+{
+    static const uint64_t g_multipliers_u64[20] = {
+        (uint64_t)1e+0,  (uint64_t)1e+1,  (uint64_t)1e+2,  (uint64_t)1e+3,  (uint64_t)1e+4,
+        (uint64_t)1e+5,  (uint64_t)1e+6,  (uint64_t)1e+7,  (uint64_t)1e+8,  (uint64_t)1e+9,
+        (uint64_t)1e+10, (uint64_t)1e+11, (uint64_t)1e+12, (uint64_t)1e+13, (uint64_t)1e+14,
+        (uint64_t)1e+15, (uint64_t)1e+16, (uint64_t)1e+17, (uint64_t)1e+18, (uint64_t)1e+19
+    };
+
+    if (num_decimals >= sizeof(g_multipliers_u64) / sizeof(g_multipliers_u64[0]))
+    {
+        return false;
+    }
+    if (isnan(val) || isinf(val))
+    {
+        return false;
+    }
+    const double abs_val = fabs(val);
+    if (abs_val > (double)UINT64_MAX)
+    {
+        return false;
+    }
+
+    uint32_t multiplier  = g_multipliers_u64[num_decimals];
+    int32_t  divider_cnt = 0;
+    double   divider     = JSON_STREAM_GEN_CONST_DOUBLE_1;
+    while (((abs_val * (double)multiplier / divider) > (double)((uint64_t)1LU << DBL_MANT_DIG)))
+    {
+        if (multiplier > 1)
+        {
+            multiplier /= JSON_STREAM_GEN_CONST_U32_10;
+        }
+        else
+        {
+            divider_cnt += 1;
+            divider *= JSON_STREAM_GEN_CONST_DOUBLE_10;
+        }
+    }
+    const char zeros_str[] = "0000";
+    if (divider_cnt >= (int32_t)(sizeof(zeros_str)))
+    {
+        return false;
+    }
+
+    const uint64_t val_u64         = (uint64_t)lrint(abs_val * (double)multiplier / divider);
+    const uint64_t integral_part   = val_u64 / multiplier;
+    const uint64_t fractional_part = val_u64 % multiplier;
+
+    json_stream_gen_num_decimals_t actual_num_decimals = 0;
+    while (multiplier > 1)
+    {
+        multiplier /= JSON_STREAM_GEN_CONST_U32_10;
+        actual_num_decimals += 1;
+    }
+    const int len = snprintf(
+        p_str->buffer,
+        sizeof(p_str->buffer),
+        "%s"
+        "%" PRIu64
+        "%.*s"
+        "%s"
+        "%.*" PRIu64,
+        (val < 0) ? "-" : "",
+        integral_part,
+        divider_cnt,
+        zeros_str,
+        (0 != actual_num_decimals) ? "." : "",
+        actual_num_decimals,
+        fractional_part);
+
+    if ((len < 0) || ((size_t)len >= sizeof(p_str->buffer)))
+    {
+        return false;
+    }
     return true;
 }
 
@@ -1043,101 +1121,12 @@ json_stream_gen_add_double_limited_fixed_point(
     const double                                val,
     const json_stream_gen_num_decimals_double_e num_decimals)
 {
-    static const uint64_t multipliers[20] = { 1e+0,  1e+1,  1e+2,  1e+3,  1e+4,  1e+5,  1e+6,  1e+7,  1e+8,  1e+9,
-                                              1e+10, 1e+11, 1e+12, 1e+13, 1e+14, 1e+15, 1e+16, 1e+17, 1e+18, 1e+19 };
-
     p_gen->flag_new_data_added = true;
 
-    if (num_decimals >= sizeof(multipliers) / sizeof(multipliers[0]))
-    {
-        return false;
-    }
-    if (isnan(val) || isinf(val))
+    json_stream_gen_double_str_buf_t double_str = { 0 };
+    if (!json_stream_gen_limited_double_to_str(val, num_decimals, &double_str))
     {
         return json_stream_gen_add_null(p_gen, p_name);
-    }
-    const double abs_val = fabs(val);
-    if (abs_val > (double)UINT64_MAX)
-    {
-        return json_stream_gen_add_null(p_gen, p_name);
-    }
-
-    uint32_t multiplier  = multipliers[num_decimals];
-    int32_t  divider_cnt = 0;
-    double   divider     = 1.0;
-    while (((abs_val * (double)multiplier / divider) > (double)((uint64_t)1LU << 53U)))
-    {
-        if (multiplier > 1)
-        {
-            multiplier /= 10;
-        }
-        else
-        {
-            divider_cnt += 1;
-            divider *= 10.0;
-        }
-    }
-    const char zeros_str[] = "0000";
-    if (divider_cnt > (int32_t)(sizeof(zeros_str) - 1))
-    {
-        return json_stream_gen_add_null(p_gen, p_name);
-    }
-
-    const uint64_t val_u64         = (uint64_t)lrint(abs_val * (double)multiplier / divider);
-    const uint64_t integral_part   = val_u64 / multiplier;
-    const uint64_t fractional_part = val_u64 % multiplier;
-
-    char tmp_buffer[JSON_STREAM_GEN_STR_BUF_SIZE_DOUBLE];
-    int  len = 0;
-    if (1 == multiplier)
-    {
-        if (0 == divider_cnt)
-        {
-            len = snprintf(
-                tmp_buffer,
-                sizeof(tmp_buffer),
-                "%s"
-                "%" PRIu64,
-                (val < 0) ? "-" : "",
-                integral_part);
-        }
-        else
-        {
-            len = snprintf(
-                tmp_buffer,
-                sizeof(tmp_buffer),
-                "%s"
-                "%" PRIu64 "%.*s",
-                (val < 0) ? "-" : "",
-                integral_part,
-                divider_cnt,
-                zeros_str);
-        }
-    }
-    else
-    {
-        json_stream_gen_num_decimals_t actual_num_decimals = 0;
-        while (multiplier > 1)
-        {
-            multiplier /= 10;
-            actual_num_decimals += 1;
-        }
-        len = snprintf(
-            tmp_buffer,
-            sizeof(tmp_buffer),
-            "%s"
-            "%" PRIu64
-            "."
-            "%.*" PRIu64,
-            (val < 0) ? "-" : "",
-            integral_part,
-            actual_num_decimals,
-            fractional_part);
-    }
-
-    if ((len < 0) || ((size_t)len >= sizeof(tmp_buffer)))
-    {
-        return false;
     }
 
     const size_t saved_chunk_buf_idx = p_gen->chunk_buf_idx;
@@ -1145,7 +1134,7 @@ json_stream_gen_add_double_limited_fixed_point(
     {
         return false;
     }
-    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%s", tmp_buffer))
+    if (!json_stream_gen_printf(p_gen, saved_chunk_buf_idx, "%s", double_str.buffer))
     {
         return false;
     }
