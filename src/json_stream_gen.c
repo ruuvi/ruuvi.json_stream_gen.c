@@ -16,7 +16,10 @@
 #include <locale.h>
 
 #define JSON_STREAM_GEN_STR_BUF_SIZE_FLOAT  (16U)
-#define JSON_STREAM_GEN_STR_BUF_SIZE_DOUBLE (28U)
+#define JSON_STREAM_GEN_STR_BUF_SIZE_DOUBLE (30U)
+
+#define JSON_STREAM_GEN_STR_BUF_SIZE_LIMITED_FLOAT  (13U)
+#define JSON_STREAM_GEN_STR_BUF_SIZE_LIMITED_DOUBLE (22U)
 
 #define JSON_STREAM_GEN_CONST_U32_10    (10U)
 #define JSON_STREAM_GEN_CONST_FLOAT_10  (10.0f)
@@ -226,7 +229,7 @@ jsg_step_json_opening_bracket(json_stream_gen_t* const p_gen)
     {
         return false;
     }
-    const jsg_int_t indent = (jsg_int_t)(p_gen->cur_nesting_level * p_gen->cfg.indentation);
+    const jsg_int_t indent = (jsg_int_t)p_gen->cur_nesting_level * (jsg_int_t)p_gen->cfg.indentation;
     if (!jsg_printf(p_gen, p_gen->chunk_buf_idx, "%.*s{", indent, p_gen->p_indent_filling))
     {
         return false;
@@ -247,6 +250,10 @@ jsg_step_generating_items(json_stream_gen_t* const p_gen)
             p_gen->json_gen_state = JSON_STREAM_GEN_STATE_ERROR_INSUFFICIENT_BUFFER;
         }
         return false;
+    }
+    if (!p_gen->flag_new_data_added)
+    {
+        p_gen->json_gen_state = JSON_STREAM_GEN_STATE_JSON_CLOSING_BRACKET;
     }
     return true;
 }
@@ -284,11 +291,6 @@ jsg_get_next_chunk_step(json_stream_gen_t* const p_gen)
             {
                 return false;
             }
-            if (!p_gen->flag_new_data_added)
-            {
-                p_gen->json_gen_state = JSON_STREAM_GEN_STATE_JSON_CLOSING_BRACKET;
-                break;
-            }
             break;
         case JSON_STREAM_GEN_STATE_JSON_CLOSING_BRACKET:
             if (!jsg_step_json_closing_bracket(p_gen))
@@ -310,6 +312,8 @@ json_stream_gen_get_next_chunk(json_stream_gen_t* const p_gen)
     p_gen->p_chunk_buf[0] = '\0';
     while (jsg_get_next_chunk_step(p_gen))
     {
+        // Continuously fetch and add the next portion of data to the chunk as long as such data is available.
+        // The loop will stop if the chunk becomes overflowed.
     }
     if (JSON_STREAM_GEN_STATE_ERROR_INSUFFICIENT_BUFFER == p_gen->json_gen_state)
     {
@@ -699,17 +703,17 @@ jsg_get_decimal_point(void)
     return *p_lc->decimal_point;
 }
 
-typedef struct json_stream_gen_float_str_buf_t
+typedef struct jsg_float_str_buf_t
 {
     char buffer[JSON_STREAM_GEN_STR_BUF_SIZE_FLOAT];
-} json_stream_gen_float_str_buf_t;
+} jsg_float_str_buf_t;
 
 static bool
 jsg_float_to_str(
     const float                               val,
     const bool                                flag_fixed_point,
     const json_stream_gen_ieee754_precision_t precision,
-    json_stream_gen_float_str_buf_t* const    p_str)
+    jsg_float_str_buf_t* const                p_str)
 {
     if ((0 != isnanf(val)) || (0 != isinff(val)))
     {
@@ -764,7 +768,7 @@ jsg_add_float_with_precision(
 {
     p_gen->flag_new_data_added = true;
 
-    json_stream_gen_float_str_buf_t float_str = { 0 };
+    jsg_float_str_buf_t float_str = { 0 };
     if (!jsg_float_to_str(val, flag_fixed_point, precision, &float_str))
     {
         return json_stream_gen_add_null(p_gen, p_name);
@@ -783,17 +787,17 @@ jsg_add_float_with_precision(
     return true;
 }
 
-typedef struct json_stream_gen_double_str_buf_t
+typedef struct jsg_double_str_buf_t
 {
     char buffer[JSON_STREAM_GEN_STR_BUF_SIZE_DOUBLE];
-} json_stream_gen_double_str_buf_t;
+} jsg_double_str_buf_t;
 
 static bool
 jsg_double_to_str(
     const double                              val,
     const bool                                flag_fixed_point,
     const json_stream_gen_ieee754_precision_t precision,
-    json_stream_gen_double_str_buf_t* const   p_str)
+    jsg_double_str_buf_t* const               p_str)
 {
     if ((0 != isnan(val)) || (0 != isinf(val)))
     {
@@ -848,7 +852,7 @@ jsg_add_double_with_precision(
 {
     p_gen->flag_new_data_added = true;
 
-    json_stream_gen_double_str_buf_t double_str = { 0 };
+    jsg_double_str_buf_t double_str = { 0 };
     if (!jsg_double_to_str(val, flag_fixed_point, precision, &double_str))
     {
         return json_stream_gen_add_null(p_gen, p_name);
@@ -906,17 +910,22 @@ json_stream_gen_add_double_fixed_point(
     return jsg_add_double_with_precision(p_gen, p_name, val, true, (json_stream_gen_ieee754_precision_t)num_decimals);
 }
 
+typedef struct jsg_limited_float_str_buf_t
+{
+    char buffer[JSON_STREAM_GEN_STR_BUF_SIZE_LIMITED_FLOAT];
+} jsg_limited_float_str_buf_t;
+
 static bool
 jsg_limited_float_to_str(
     const float                                val,
     const json_stream_gen_num_decimals_float_e num_decimals,
-    json_stream_gen_float_str_buf_t* const     p_str)
+    jsg_limited_float_str_buf_t* const         p_str)
 {
     static const uint32_t g_multipliers_u32[10] = { (uint32_t)1e+0, (uint32_t)1e+1, (uint32_t)1e+2, (uint32_t)1e+3,
                                                     (uint32_t)1e+4, (uint32_t)1e+5, (uint32_t)1e+6, (uint32_t)1e+7,
                                                     (uint32_t)1e+8, (uint32_t)1e+9 };
 
-    if (num_decimals >= sizeof(g_multipliers_u32) / sizeof(g_multipliers_u32[0]))
+    if (num_decimals >= (sizeof(g_multipliers_u32) / sizeof(g_multipliers_u32[0])))
     {
         return false;
     }
@@ -933,7 +942,7 @@ jsg_limited_float_to_str(
     uint32_t multiplier  = g_multipliers_u32[num_decimals];
     int32_t  divider_cnt = 0;
     float    divider     = JSON_STREAM_GEN_CONST_FLOAT_1;
-    while (((abs_val * (float)multiplier / divider) > (float)(1U << (uint32_t)FLT_MANT_DIG)))
+    while (((abs_val * (float)multiplier) / divider) > (float)(1U << (uint32_t)FLT_MANT_DIG))
     {
         if (multiplier > 1)
         {
@@ -951,7 +960,7 @@ jsg_limited_float_to_str(
         return false;
     }
 
-    const uint32_t val_u32         = (uint32_t)lrintf(abs_val * (float)multiplier / divider);
+    const uint32_t val_u32         = (uint32_t)lrintf((abs_val * (float)multiplier) / divider);
     const uint32_t integral_part   = val_u32 / multiplier;
     const uint32_t fractional_part = val_u32 % multiplier;
 
@@ -993,7 +1002,7 @@ json_stream_gen_add_float_limited_fixed_point(
 {
     p_gen->flag_new_data_added = true;
 
-    json_stream_gen_float_str_buf_t float_str = { 0 };
+    jsg_limited_float_str_buf_t float_str = { 0 };
     if (!jsg_limited_float_to_str(val, num_decimals, &float_str))
     {
         return json_stream_gen_add_null(p_gen, p_name);
@@ -1012,11 +1021,16 @@ json_stream_gen_add_float_limited_fixed_point(
     return true;
 }
 
+typedef struct jsg_limited_double_str_buf_t
+{
+    char buffer[JSON_STREAM_GEN_STR_BUF_SIZE_LIMITED_DOUBLE];
+} jsg_limited_double_str_buf_t;
+
 static bool
 jsg_limited_double_to_str(
     const double                                val,
     const json_stream_gen_num_decimals_double_e num_decimals,
-    json_stream_gen_double_str_buf_t* const     p_str)
+    jsg_limited_double_str_buf_t* const         p_str)
 {
     static const uint64_t g_multipliers_u64[20] = {
         (uint64_t)1e+0,  (uint64_t)1e+1,  (uint64_t)1e+2,  (uint64_t)1e+3,  (uint64_t)1e+4,
@@ -1025,7 +1039,7 @@ jsg_limited_double_to_str(
         (uint64_t)1e+15, (uint64_t)1e+16, (uint64_t)1e+17, (uint64_t)1e+18, (uint64_t)1e+19
     };
 
-    if (num_decimals >= sizeof(g_multipliers_u64) / sizeof(g_multipliers_u64[0]))
+    if (num_decimals >= (sizeof(g_multipliers_u64) / sizeof(g_multipliers_u64[0])))
     {
         return false;
     }
@@ -1039,10 +1053,10 @@ jsg_limited_double_to_str(
         return false;
     }
 
-    uint32_t multiplier  = g_multipliers_u64[num_decimals];
+    uint64_t multiplier  = g_multipliers_u64[num_decimals];
     int32_t  divider_cnt = 0;
     double   divider     = JSON_STREAM_GEN_CONST_DOUBLE_1;
-    while (((abs_val * (double)multiplier / divider) > (double)((uint64_t)1LU << (uint32_t)DBL_MANT_DIG)))
+    while (((abs_val * (double)multiplier) / divider) > (double)((uint64_t)1LU << (uint32_t)DBL_MANT_DIG))
     {
         if (multiplier > 1)
         {
@@ -1060,7 +1074,7 @@ jsg_limited_double_to_str(
         return false;
     }
 
-    const uint64_t val_u64         = (uint64_t)lrint(abs_val * (double)multiplier / divider);
+    const uint64_t val_u64         = (uint64_t)lrint((abs_val * (double)multiplier) / divider);
     const uint64_t integral_part   = val_u64 / multiplier;
     const uint64_t fractional_part = val_u64 % multiplier;
 
@@ -1102,7 +1116,7 @@ json_stream_gen_add_double_limited_fixed_point(
 {
     p_gen->flag_new_data_added = true;
 
-    json_stream_gen_double_str_buf_t double_str = { 0 };
+    jsg_limited_double_str_buf_t double_str = { 0 };
     if (!jsg_limited_double_to_str(val, num_decimals, &double_str))
     {
         return json_stream_gen_add_null(p_gen, p_name);

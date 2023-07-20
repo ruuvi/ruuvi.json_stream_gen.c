@@ -1295,7 +1295,7 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_float_0p01) // NOLINT
             JSON_STREAM_GEN_ADD_FLOAT_FIXED_POINT(p_gen, "key_3", 0.01f, JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_3);
             JSON_STREAM_GEN_ADD_FLOAT_FIXED_POINT(p_gen, "key_4", 0.01f, JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_4);
             JSON_STREAM_GEN_ADD_FLOAT_FIXED_POINT(p_gen, "key_5", 0.01f, JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_5);
-            JSON_STREAM_GEN_ADD_FLOAT_FIXED_POINT(p_gen, "key_6", 0.01f, JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_6);
+            JSON_STREAM_GEN_ADD_FLOAT_FIXED_POINT(p_gen, "key_6", 0.012340f, JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_6);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
         0,
@@ -1308,7 +1308,7 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_float_0p01) // NOLINT
                "\"key_3\":0.010,"
                "\"key_4\":0.0100,"
                "\"key_5\":0.01000,"
-               "\"key_6\":0.010000"
+               "\"key_6\":0.012340"
                "}"),
         string(json_stream_gen_get_next_chunk(wrapper.get())));
 }
@@ -1327,7 +1327,12 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_float_minus0p01) // NOLINT
             JSON_STREAM_GEN_ADD_FLOAT_FIXED_POINT(p_gen, "key_3", -0.01f, JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_3);
             JSON_STREAM_GEN_ADD_FLOAT_FIXED_POINT(p_gen, "key_4", -0.01f, JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_4);
             JSON_STREAM_GEN_ADD_FLOAT_FIXED_POINT(p_gen, "key_5", -0.01f, JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_5);
-            JSON_STREAM_GEN_ADD_FLOAT_FIXED_POINT(p_gen, "key_6", -0.01f, JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_6);
+            JSON_STREAM_GEN_ADD_FLOAT_FIXED_POINT(p_gen, "key_6", -0.01234f, JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_6);
+            JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_6",
+                -0.01234f,
+                JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_6);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
         0,
@@ -1340,7 +1345,8 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_float_minus0p01) // NOLINT
                "\"key_3\":-0.010,"
                "\"key_4\":-0.0100,"
                "\"key_5\":-0.01000,"
-               "\"key_6\":-0.010000"
+               "\"key_6\":-0.012340,"
+               "\"key_6\":-0.012340"
                "}"),
         string(json_stream_gen_get_next_chunk(wrapper.get())));
 }
@@ -1550,7 +1556,17 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_float_max_val_without_loosin
                 "key_0",
                 16777216 /* 2^23 */,
                 JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
+            JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_0",
+                16777216 /* 2^23 */,
+                JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
             JSON_STREAM_GEN_ADD_FLOAT_FIXED_POINT(
+                p_gen,
+                "key_1",
+                16777215 /* 2^23-1 */,
+                JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_0);
+            JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
                 p_gen,
                 "key_1",
                 16777215 /* 2^23-1 */,
@@ -1572,6 +1588,8 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_float_max_val_without_loosin
     ASSERT_EQ(
         string("{"
                "\"key_0\":16777216,"
+               "\"key_0\":16777216,"
+               "\"key_1\":16777215,"
                "\"key_1\":16777215,"
                "\"key_2\":-16777216,"
                "\"key_3\":-16777215"
@@ -2223,6 +2241,9 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_0p0) // NOLINT
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_7", 0.0, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_7);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_8", 0.0, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_8);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_9", 0.0, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_9);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_10", 0.0, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_11", 0.0, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_12", 0.0, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
         0,
@@ -2238,7 +2259,10 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_0p0) // NOLINT
                "\"key_6\":0.000000,"
                "\"key_7\":0.0000000,"
                "\"key_8\":0.00000000,"
-               "\"key_9\":0.000000000"
+               "\"key_9\":0.000000000,"
+               "\"key_10\":0.0000000000,"
+               "\"key_11\":0.00000000000,"
+               "\"key_12\":0.000000000000"
                "}"),
         string(json_stream_gen_get_next_chunk(wrapper.get())));
 }
@@ -2261,6 +2285,9 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_1p0) // NOLINT
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_7", 1.0, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_7);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_8", 1.0, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_8);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_9", 1.0, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_9);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_10", 1.0, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_11", 1.0, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_12", 1.0, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
         0,
@@ -2276,7 +2303,10 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_1p0) // NOLINT
                "\"key_6\":1.000000,"
                "\"key_7\":1.0000000,"
                "\"key_8\":1.00000000,"
-               "\"key_9\":1.000000000"
+               "\"key_9\":1.000000000,"
+               "\"key_10\":1.0000000000,"
+               "\"key_11\":1.00000000000,"
+               "\"key_12\":1.000000000000"
                "}"),
         string(json_stream_gen_get_next_chunk(wrapper.get())));
 }
@@ -2299,6 +2329,9 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_minus1p0) // NOLINT
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_7", -1.0, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_7);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_8", -1.0, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_8);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_9", -1.0, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_9);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_10", -1.0, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_11", -1.0, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_12", -1.0, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
         0,
@@ -2314,7 +2347,10 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_minus1p0) // NOLINT
                "\"key_6\":-1.000000,"
                "\"key_7\":-1.0000000,"
                "\"key_8\":-1.00000000,"
-               "\"key_9\":-1.000000000"
+               "\"key_9\":-1.000000000,"
+               "\"key_10\":-1.0000000000,"
+               "\"key_11\":-1.00000000000,"
+               "\"key_12\":-1.000000000000"
                "}"),
         string(json_stream_gen_get_next_chunk(wrapper.get())));
 }
@@ -2336,7 +2372,42 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_0p01) // NOLINT
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_6", 0.01, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_6);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_7", 0.01, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_7);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_8", 0.01, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_8);
-            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_9", 0.01, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_9);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_9", 0.012341234, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_9);
+            JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_9",
+                0.012341234,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_9);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_10",
+                0.0123412341,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_10",
+                0.0123412341,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_11",
+                0.01234123412,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_11",
+                0.01234123412,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_12",
+                0.012341234123,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
+            JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_12",
+                0.012341234123,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
         0,
@@ -2352,7 +2423,14 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_0p01) // NOLINT
                "\"key_6\":0.010000,"
                "\"key_7\":0.0100000,"
                "\"key_8\":0.01000000,"
-               "\"key_9\":0.010000000"
+               "\"key_9\":0.012341234,"
+               "\"key_9\":0.012341234,"
+               "\"key_10\":0.0123412341,"
+               "\"key_10\":0.0123412341,"
+               "\"key_11\":0.01234123412,"
+               "\"key_11\":0.01234123412,"
+               "\"key_12\":0.012341234123,"
+               "\"key_12\":0.012341234123"
                "}"),
         string(json_stream_gen_get_next_chunk(wrapper.get())));
 }
@@ -2375,6 +2453,9 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_minus0p01) // NOLINT
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_7", -0.01, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_7);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_8", -0.01, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_8);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_9", -0.01, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_9);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_10", -0.01, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_11", -0.01, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_12", -0.01, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
         0,
@@ -2390,7 +2471,10 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_minus0p01) // NOLINT
                "\"key_6\":-0.010000,"
                "\"key_7\":-0.0100000,"
                "\"key_8\":-0.01000000,"
-               "\"key_9\":-0.010000000"
+               "\"key_9\":-0.010000000,"
+               "\"key_10\":-0.0100000000,"
+               "\"key_11\":-0.01000000000,"
+               "\"key_12\":-0.010000000000"
                "}"),
         string(json_stream_gen_get_next_chunk(wrapper.get())));
 }
@@ -2413,6 +2497,9 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_0p06) // NOLINT
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_7", 0.06, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_7);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_8", 0.06, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_8);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_9", 0.06, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_9);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_10", 0.06, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_11", 0.06, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_12", 0.06, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
         0,
@@ -2428,7 +2515,10 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_0p06) // NOLINT
                "\"key_6\":0.060000,"
                "\"key_7\":0.0600000,"
                "\"key_8\":0.06000000,"
-               "\"key_9\":0.060000000"
+               "\"key_9\":0.060000000,"
+               "\"key_10\":0.0600000000,"
+               "\"key_11\":0.06000000000,"
+               "\"key_12\":0.060000000000"
                "}"),
         string(json_stream_gen_get_next_chunk(wrapper.get())));
 }
@@ -2451,6 +2541,9 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_minus0p06) // NOLINT
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_7", -0.06, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_7);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_8", -0.06, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_8);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_9", -0.06, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_9);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_10", -0.06, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_11", -0.06, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_12", -0.06, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
         0,
@@ -2466,7 +2559,10 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_minus0p06) // NOLINT
                "\"key_6\":-0.060000,"
                "\"key_7\":-0.0600000,"
                "\"key_8\":-0.06000000,"
-               "\"key_9\":-0.060000000"
+               "\"key_9\":-0.060000000,"
+               "\"key_10\":-0.0600000000,"
+               "\"key_11\":-0.06000000000,"
+               "\"key_12\":-0.060000000000"
                "}"),
         string(json_stream_gen_get_next_chunk(wrapper.get())));
 }
@@ -2482,53 +2578,68 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_0p555555555555) // NO
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_0",
-                0.555555555555,
+                0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_0);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_1",
-                0.555555555555,
+                0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_1);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_2",
-                0.555555555555,
+                0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_2);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_3",
-                0.555555555555,
+                0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_3);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_4",
-                0.555555555555,
+                0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_4);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_5",
-                0.555555555555,
+                0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_5);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_6",
-                0.555555555555,
+                0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_6);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_7",
-                0.555555555555,
+                0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_7);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_8",
-                0.555555555555,
+                0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_8);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_9",
-                0.555555555555,
+                0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_9);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_10",
+                0.555555555555555,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_11",
+                0.555555555555555,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_12",
+                0.555555555555555,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
         0,
@@ -2544,7 +2655,10 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_0p555555555555) // NO
                "\"key_6\":0.555556,"
                "\"key_7\":0.5555556,"
                "\"key_8\":0.55555556,"
-               "\"key_9\":0.555555556"
+               "\"key_9\":0.555555556,"
+               "\"key_10\":0.5555555556,"
+               "\"key_11\":0.55555555556,"
+               "\"key_12\":0.555555555556"
                "}"),
         string(json_stream_gen_get_next_chunk(wrapper.get())));
 }
@@ -2560,53 +2674,68 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_minus0p555555555555) 
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_0",
-                -0.555555555555,
+                -0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_0);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_1",
-                -0.555555555555,
+                -0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_1);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_2",
-                -0.555555555555,
+                -0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_2);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_3",
-                -0.555555555555,
+                -0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_3);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_4",
-                -0.555555555555,
+                -0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_4);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_5",
-                -0.555555555555,
+                -0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_5);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_6",
-                -0.555555555555,
+                -0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_6);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_7",
-                -0.555555555555,
+                -0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_7);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_8",
-                -0.555555555555,
+                -0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_8);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
                 p_gen,
                 "key_9",
-                -0.555555555555,
+                -0.555555555555555,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_9);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_10",
+                -0.555555555555555,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_11",
+                -0.555555555555555,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_12",
+                -0.555555555555555,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
         0,
@@ -2622,7 +2751,10 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_minus0p555555555555) 
                "\"key_6\":-0.555556,"
                "\"key_7\":-0.5555556,"
                "\"key_8\":-0.55555556,"
-               "\"key_9\":-0.555555556"
+               "\"key_9\":-0.555555556,"
+               "\"key_10\":-0.5555555556,"
+               "\"key_11\":-0.55555555556,"
+               "\"key_12\":-0.555555555556"
                "}"),
         string(json_stream_gen_get_next_chunk(wrapper.get())));
 }
@@ -2645,6 +2777,9 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double) // NOLINT
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_7", 10.3, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_7);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_8", 10.3, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_8);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_9", 10.3, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_9);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_10", 10.3, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_11", 10.3, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_12", 10.3, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
         0,
@@ -2660,7 +2795,10 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double) // NOLINT
                "\"key_6\":10.300000,"
                "\"key_7\":10.3000000,"
                "\"key_8\":10.30000000,"
-               "\"key_9\":10.300000000"
+               "\"key_9\":10.300000000,"
+               "\"key_10\":10.3000000000,"
+               "\"key_11\":10.30000000000,"
+               "\"key_12\":10.300000000000"
                "}"),
         string(json_stream_gen_get_next_chunk(wrapper.get())));
 }
@@ -2683,6 +2821,9 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_minus10p3) // NOLINT
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_7", -10.3, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_7);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_8", -10.3, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_8);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_9", -10.3, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_9);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_10", -10.3, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_11", -10.3, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(p_gen, "key_12", -10.3, JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
         0,
@@ -2698,7 +2839,10 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_minus10p3) // NOLINT
                "\"key_6\":-10.300000,"
                "\"key_7\":-10.3000000,"
                "\"key_8\":-10.30000000,"
-               "\"key_9\":-10.300000000"
+               "\"key_9\":-10.300000000,"
+               "\"key_10\":-10.3000000000,"
+               "\"key_11\":-10.30000000000,"
+               "\"key_12\":-10.300000000000"
                "}"),
         string(json_stream_gen_get_next_chunk(wrapper.get())));
 }
@@ -2716,7 +2860,17 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_max_val_without_loosi
                 "key_0",
                 9007199254740992 /* 2^53 */,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_0);
+            JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_0",
+                9007199254740992 /* 2^53 */,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_0);
             JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_1",
+                9007199254740991 /* 2^53-1 */,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_0);
+            JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT(
                 p_gen,
                 "key_1",
                 9007199254740991 /* 2^53-1 */,
@@ -2738,6 +2892,8 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_max_val_without_loosi
     ASSERT_EQ(
         string("{"
                "\"key_0\":9007199254740992,"
+               "\"key_0\":9007199254740992,"
+               "\"key_1\":9007199254740991,"
                "\"key_1\":9007199254740991,"
                "\"key_2\":-9007199254740992,"
                "\"key_3\":-9007199254740991"
@@ -2853,6 +3009,36 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_900719925474099p2) //
                 "key_9",
                 900719925474099.2,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_9);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_10",
+                900719925474099.2,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_10",
+                900719925474099.2,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_11",
+                900719925474099.2,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_11",
+                900719925474099.2,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_12",
+                900719925474099.2,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
+            JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_12",
+                900719925474099.2,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
         0,
@@ -2878,7 +3064,13 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_900719925474099p2) //
                "\"key_8\":900719925474099.25000000,"
                "\"key_8\":900719925474099.2,"
                "\"key_9\":900719925474099.250000000,"
-               "\"key_9\":900719925474099.2"
+               "\"key_9\":900719925474099.2,"
+               "\"key_10\":900719925474099.2500000000,"
+               "\"key_10\":900719925474099.2,"
+               "\"key_11\":900719925474099.25000000000,"
+               "\"key_11\":900719925474099.2,"
+               "\"key_12\":900719925474099.250000000000,"
+               "\"key_12\":900719925474099.2"
                "}"),
         string(json_stream_gen_get_next_chunk(wrapper.get())));
 }
@@ -2991,6 +3183,36 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_minus900719925474099p
                 "key_9",
                 -900719925474099.2,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_9);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_10",
+                -900719925474099.2,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_10",
+                -900719925474099.2,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_11",
+                -900719925474099.2,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_11",
+                -900719925474099.2,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_12",
+                -900719925474099.2,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
+            JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_12",
+                -900719925474099.2,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
         0,
@@ -3016,7 +3238,13 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_minus900719925474099p
                "\"key_8\":-900719925474099.25000000,"
                "\"key_8\":-900719925474099.2,"
                "\"key_9\":-900719925474099.250000000,"
-               "\"key_9\":-900719925474099.2"
+               "\"key_9\":-900719925474099.2,"
+               "\"key_10\":-900719925474099.2500000000,"
+               "\"key_10\":-900719925474099.2,"
+               "\"key_11\":-900719925474099.25000000000,"
+               "\"key_11\":-900719925474099.2,"
+               "\"key_12\":-900719925474099.250000000000,"
+               "\"key_12\":-900719925474099.2"
                "}"),
         string(json_stream_gen_get_next_chunk(wrapper.get())));
 }
@@ -3129,6 +3357,36 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_900719925474099p59) /
                 "key_9",
                 900719925474099.59,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_9);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_10",
+                900719925474099.59,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_10",
+                900719925474099.59,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_11",
+                900719925474099.59,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_11",
+                900719925474099.59,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_12",
+                900719925474099.59,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
+            JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_12",
+                900719925474099.59,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
         0,
@@ -3154,7 +3412,13 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_900719925474099p59) /
                "\"key_8\":900719925474099.62500000,"
                "\"key_8\":900719925474100,"
                "\"key_9\":900719925474099.625000000,"
-               "\"key_9\":900719925474100"
+               "\"key_9\":900719925474100,"
+               "\"key_10\":900719925474099.6250000000,"
+               "\"key_10\":900719925474100,"
+               "\"key_11\":900719925474099.62500000000,"
+               "\"key_11\":900719925474100,"
+               "\"key_12\":900719925474099.625000000000,"
+               "\"key_12\":900719925474100"
                "}"),
         string(json_stream_gen_get_next_chunk(wrapper.get())));
 }
@@ -3267,6 +3531,36 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_minus900719925474099p
                 "key_9",
                 -900719925474099.59,
                 JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_9);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_10",
+                -900719925474099.59,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_10",
+                -900719925474099.59,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_10);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_11",
+                -900719925474099.59,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_11",
+                -900719925474099.59,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_11);
+            JSON_STREAM_GEN_ADD_DOUBLE_FIXED_POINT(
+                p_gen,
+                "key_12",
+                -900719925474099.59,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
+            JSON_STREAM_GEN_ADD_DOUBLE_LIMITED_FIXED_POINT(
+                p_gen,
+                "key_12",
+                -900719925474099.59,
+                JSON_STREAM_GEN_NUM_DECIMALS_DOUBLE_12);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
         0,
@@ -3292,7 +3586,13 @@ TEST_F(TestJsonStreamGenU, test_generate_json_fixed_double_minus900719925474099p
                "\"key_8\":-900719925474099.62500000,"
                "\"key_8\":-900719925474100,"
                "\"key_9\":-900719925474099.625000000,"
-               "\"key_9\":-900719925474100"
+               "\"key_9\":-900719925474100,"
+               "\"key_10\":-900719925474099.6250000000,"
+               "\"key_10\":-900719925474100,"
+               "\"key_11\":-900719925474099.62500000000,"
+               "\"key_11\":-900719925474100,"
+               "\"key_12\":-900719925474099.625000000000,"
+               "\"key_12\":-900719925474100"
                "}"),
         string(json_stream_gen_get_next_chunk(wrapper.get())));
 }
