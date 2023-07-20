@@ -18,6 +18,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <math.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -1202,7 +1203,7 @@ bool
 json_stream_gen_add_float(
     json_stream_gen_t* const            p_gen,
     const char* const                   p_name,
-    const float                         val,
+    const float_t                       val,
     json_stream_gen_ieee754_precision_t precision);
 
 /**
@@ -1219,7 +1220,7 @@ bool
 json_stream_gen_add_double(
     json_stream_gen_t* const            p_gen,
     const char* const                   p_name,
-    const double                        val,
+    const double_t                      val,
     json_stream_gen_ieee754_precision_t precision);
 
 /**
@@ -1236,7 +1237,7 @@ bool
 json_stream_gen_add_float_fixed_point(
     json_stream_gen_t* const             p_gen,
     const char* const                    p_name,
-    const float                          val,
+    const float_t                        val,
     json_stream_gen_num_decimals_float_e num_decimals);
 
 /**
@@ -1253,7 +1254,7 @@ bool
 json_stream_gen_add_double_fixed_point(
     json_stream_gen_t* const              p_gen,
     const char* const                     p_name,
-    const double                          val,
+    const double_t                        val,
     json_stream_gen_num_decimals_double_e num_decimals);
 
 /**
@@ -1274,7 +1275,7 @@ bool
 json_stream_gen_add_float_limited_fixed_point(
     json_stream_gen_t* const             p_gen,
     const char* const                    p_name,
-    const float                          val,
+    const float_t                        val,
     json_stream_gen_num_decimals_float_e num_decimals);
 
 /**
@@ -1295,7 +1296,7 @@ bool
 json_stream_gen_add_double_limited_fixed_point(
     json_stream_gen_t* const              p_gen,
     const char* const                     p_name,
-    const double                          val,
+    const double_t                        val,
     json_stream_gen_num_decimals_double_e num_decimals);
 
 /**

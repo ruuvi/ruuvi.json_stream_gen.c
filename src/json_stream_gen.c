@@ -710,7 +710,7 @@ typedef struct jsg_float_str_buf_t
 
 static bool
 jsg_float_to_str(
-    const float                               val,
+    const float_t                             val,
     const bool                                flag_fixed_point,
     const json_stream_gen_ieee754_precision_t precision,
     jsg_float_str_buf_t* const                p_str)
@@ -731,8 +731,8 @@ jsg_float_to_str(
             len = snprintf(p_str->buffer, sizeof(p_str->buffer), "%1.7g", val);
 
             // Check if the original double value can be recovered
-            char*       p_end = NULL;
-            const float test  = strtof(p_str->buffer, &p_end);
+            char*         p_end = NULL;
+            const float_t test  = strtof(p_str->buffer, &p_end);
             if (('\0' != *p_end) || (*(const uint32_t*)&test != *(const uint32_t*)&val))
             {
                 // If not, print with more decimal places of precision
@@ -762,7 +762,7 @@ static bool
 jsg_add_float_with_precision(
     json_stream_gen_t* const                  p_gen,
     const char* const                         p_name,
-    const float                               val,
+    const float_t                             val,
     const bool                                flag_fixed_point,
     const json_stream_gen_ieee754_precision_t precision)
 {
@@ -794,7 +794,7 @@ typedef struct jsg_double_str_buf_t
 
 static bool
 jsg_double_to_str(
-    const double                              val,
+    const double_t                            val,
     const bool                                flag_fixed_point,
     const json_stream_gen_ieee754_precision_t precision,
     jsg_double_str_buf_t* const               p_str)
@@ -815,8 +815,8 @@ jsg_double_to_str(
             len = snprintf(p_str->buffer, sizeof(p_str->buffer), "%1.15g", val);
 
             // Check if the original double value can be recovered
-            char*        p_end = NULL;
-            const double test  = strtod(p_str->buffer, &p_end);
+            char*          p_end = NULL;
+            const double_t test  = strtod(p_str->buffer, &p_end);
             if (('\0' != *p_end) || (*(const uint64_t*)&test != *(const uint64_t*)&val))
             {
                 // If not, print with more decimal places of precision
@@ -846,7 +846,7 @@ static bool
 jsg_add_double_with_precision(
     json_stream_gen_t* const            p_gen,
     const char* const                   p_name,
-    const double                        val,
+    const double_t                      val,
     const bool                          flag_fixed_point,
     json_stream_gen_ieee754_precision_t precision)
 {
@@ -874,7 +874,7 @@ bool
 json_stream_gen_add_float(
     json_stream_gen_t* const            p_gen,
     const char* const                   p_name,
-    const float                         val,
+    const float_t                       val,
     json_stream_gen_ieee754_precision_t precision)
 {
     return jsg_add_float_with_precision(p_gen, p_name, val, false, precision);
@@ -884,7 +884,7 @@ bool
 json_stream_gen_add_double(
     json_stream_gen_t* const            p_gen,
     const char* const                   p_name,
-    const double                        val,
+    const double_t                      val,
     json_stream_gen_ieee754_precision_t precision)
 {
     return jsg_add_double_with_precision(p_gen, p_name, val, false, precision);
@@ -894,7 +894,7 @@ bool
 json_stream_gen_add_float_fixed_point(
     json_stream_gen_t* const             p_gen,
     const char* const                    p_name,
-    const float                          val,
+    const float_t                        val,
     json_stream_gen_num_decimals_float_e num_decimals)
 {
     return jsg_add_float_with_precision(p_gen, p_name, val, true, (json_stream_gen_ieee754_precision_t)num_decimals);
@@ -904,7 +904,7 @@ bool
 json_stream_gen_add_double_fixed_point(
     json_stream_gen_t* const              p_gen,
     const char* const                     p_name,
-    const double                          val,
+    const double_t                        val,
     json_stream_gen_num_decimals_double_e num_decimals)
 {
     return jsg_add_double_with_precision(p_gen, p_name, val, true, (json_stream_gen_ieee754_precision_t)num_decimals);
@@ -917,7 +917,7 @@ typedef struct jsg_limited_float_str_buf_t
 
 static bool
 jsg_limited_float_to_str(
-    const float                                val,
+    const float_t                              val,
     const json_stream_gen_num_decimals_float_e num_decimals,
     jsg_limited_float_str_buf_t* const         p_str)
 {
@@ -933,16 +933,16 @@ jsg_limited_float_to_str(
     {
         return false;
     }
-    const float abs_val = fabsf(val);
-    if (abs_val > (float)UINT32_MAX)
+    const float_t abs_val = fabsf(val);
+    if (abs_val > (float_t)UINT32_MAX)
     {
         return false;
     }
 
     uint32_t multiplier  = g_multipliers_u32[num_decimals];
     int32_t  divider_cnt = 0;
-    float    divider     = JSON_STREAM_GEN_CONST_FLOAT_1;
-    while (((abs_val * (float)multiplier) / divider) > (float)(1U << (uint32_t)FLT_MANT_DIG))
+    float_t  divider     = JSON_STREAM_GEN_CONST_FLOAT_1;
+    while (((abs_val * (float_t)multiplier) / divider) > (float_t)(1U << (uint32_t)FLT_MANT_DIG))
     {
         if (multiplier > 1)
         {
@@ -960,7 +960,7 @@ jsg_limited_float_to_str(
         return false;
     }
 
-    const uint32_t val_u32         = (uint32_t)lrintf((abs_val * (float)multiplier) / divider);
+    const uint32_t val_u32         = (uint32_t)lrintf((abs_val * (float_t)multiplier) / divider);
     const uint32_t integral_part   = val_u32 / multiplier;
     const uint32_t fractional_part = val_u32 % multiplier;
 
@@ -997,7 +997,7 @@ bool
 json_stream_gen_add_float_limited_fixed_point(
     json_stream_gen_t* const                   p_gen,
     const char* const                          p_name,
-    const float                                val,
+    const float_t                              val,
     const json_stream_gen_num_decimals_float_e num_decimals)
 {
     p_gen->flag_new_data_added = true;
@@ -1028,7 +1028,7 @@ typedef struct jsg_limited_double_str_buf_t
 
 static bool
 jsg_limited_double_to_str(
-    const double                                val,
+    const double_t                              val,
     const json_stream_gen_num_decimals_double_e num_decimals,
     jsg_limited_double_str_buf_t* const         p_str)
 {
@@ -1046,16 +1046,16 @@ jsg_limited_double_to_str(
     {
         return false;
     }
-    const double abs_val = fabs(val);
-    if (abs_val > (double)UINT64_MAX)
+    const double_t abs_val = fabs(val);
+    if (abs_val > (double_t)UINT64_MAX)
     {
         return false;
     }
 
     uint64_t multiplier  = g_multipliers_u64[num_decimals];
     int32_t  divider_cnt = 0;
-    double   divider     = JSON_STREAM_GEN_CONST_DOUBLE_1;
-    while (((abs_val * (double)multiplier) / divider) > (double)((uint64_t)1LU << (uint32_t)DBL_MANT_DIG))
+    double_t divider     = JSON_STREAM_GEN_CONST_DOUBLE_1;
+    while (((abs_val * (double_t)multiplier) / divider) > (double_t)((uint64_t)1LU << (uint32_t)DBL_MANT_DIG))
     {
         if (multiplier > 1)
         {
@@ -1073,7 +1073,7 @@ jsg_limited_double_to_str(
         return false;
     }
 
-    const uint64_t val_u64         = (uint64_t)lrint((abs_val * (double)multiplier) / divider);
+    const uint64_t val_u64         = (uint64_t)lrint((abs_val * (double_t)multiplier) / divider);
     const uint64_t integral_part   = val_u64 / multiplier;
     const uint64_t fractional_part = val_u64 % multiplier;
 
@@ -1110,7 +1110,7 @@ bool
 json_stream_gen_add_double_limited_fixed_point(
     json_stream_gen_t* const                    p_gen,
     const char* const                           p_name,
-    const double                                val,
+    const double_t                              val,
     const json_stream_gen_num_decimals_double_e num_decimals)
 {
     p_gen->flag_new_data_added = true;
