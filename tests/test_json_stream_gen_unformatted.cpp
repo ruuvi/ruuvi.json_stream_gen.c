@@ -424,7 +424,7 @@ TEST_F(TestJsonStreamGenU, test_generate_json_string_null) // NOLINT
 
 TEST_F(TestJsonStreamGenU, test_generate_json_string_unformatted__with_escaping) // NOLINT
 {
-    for (json_stream_gen_size_t max_chunk_size = 70; max_chunk_size > 34; max_chunk_size--)
+    for (json_stream_gen_size_t max_chunk_size = 453; max_chunk_size > 39; max_chunk_size--)
     {
         json_stream_gen_cfg_t cfg = {
             .max_chunk_size = max_chunk_size,
@@ -436,6 +436,17 @@ TEST_F(TestJsonStreamGenU, test_generate_json_string_unformatted__with_escaping)
                 JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
                 JSON_STREAM_GEN_ADD_STRING(p_gen, "key0", "ABCDEFGIJKLMNOPQRSTUVWXYZ");
                 JSON_STREAM_GEN_ADD_STRING(p_gen, "key1", "val\" \\ \b \f \n \r \t");
+                JSON_STREAM_GEN_ADD_STRING(p_gen, "key2", "Buenos días \u00F1");
+                JSON_STREAM_GEN_ADD_STRING(p_gen, "key3", "こんにちは世界 \u4E16\u754C");
+                JSON_STREAM_GEN_ADD_STRING(p_gen, "key4", "Greek letter: ∞ \u221E, π \u03C0");
+                JSON_STREAM_GEN_ADD_STRING(p_gen, "sym_1-4", "\x01\x02\x03\x04");
+                JSON_STREAM_GEN_ADD_STRING(p_gen, "sym_5-8", "\x05\x06\x07\x08");
+                JSON_STREAM_GEN_ADD_STRING(p_gen, "sym_9-12", "\x09\x0A\x0B\x0C");
+                JSON_STREAM_GEN_ADD_STRING(p_gen, "sym_13-16", "\x0D\x0E\x0F\x10");
+                JSON_STREAM_GEN_ADD_STRING(p_gen, "sym_17-20", "\x11\x12\x13\x14");
+                JSON_STREAM_GEN_ADD_STRING(p_gen, "sym_21-24", "\x15\x16\x17\x18");
+                JSON_STREAM_GEN_ADD_STRING(p_gen, "sym_25-28", "\x19\x1A\x1B\x1C");
+                JSON_STREAM_GEN_ADD_STRING(p_gen, "sym_29-32", "\x1D\x1E\x1F\x20");
                 JSON_STREAM_GEN_END_GENERATOR_FUNC();
             },
             0,
@@ -458,7 +469,21 @@ TEST_F(TestJsonStreamGenU, test_generate_json_string_unformatted__with_escaping)
             json_str += string(p_chunk);
         }
         ASSERT_EQ(
-            string("{\"key0\":\"ABCDEFGIJKLMNOPQRSTUVWXYZ\",\"key1\":\"val\\\" \\\\ \\b \\f \\n \\r \\t\"}"),
+            string("{"
+                   "\"key0\":\"ABCDEFGIJKLMNOPQRSTUVWXYZ\","
+                   "\"key1\":\"val\\\" \\\\ \\b \\f \\n \\r \\t\","
+                   "\"key2\":\"Buenos días \u00F1\","
+                   "\"key3\":\"こんにちは世界 \u4E16\u754C\","
+                   "\"key4\":\"Greek letter: ∞ \u221E, π \u03C0\","
+                   "\"sym_1-4\":\"\\u0001\\u0002\\u0003\\u0004\","
+                   "\"sym_5-8\":\"\\u0005\\u0006\\u0007\\b\","
+                   "\"sym_9-12\":\"\\t\\n\\u000b\\f\","
+                   "\"sym_13-16\":\"\\r\\u000e\\u000f\\u0010\","
+                   "\"sym_17-20\":\"\\u0011\\u0012\\u0013\\u0014\","
+                   "\"sym_21-24\":\"\\u0015\\u0016\\u0017\\u0018\","
+                   "\"sym_25-28\":\"\\u0019\\u001a\\u001b\\u001c\","
+                   "\"sym_29-32\":\"\\u001d\\u001e\\u001f \""
+                   "}"),
             json_str);
     }
 }

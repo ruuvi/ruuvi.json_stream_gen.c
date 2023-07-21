@@ -455,49 +455,60 @@ json_stream_gen_end_array(json_stream_gen_t* const p_gen)
     return jsg_end_obj_or_array(p_gen, ']');
 }
 
-static bool
-jsg_check_char_escaping(const char input_char, char* const p_output_char)
+#define JSG_ESCAPED_CHAR_BUF_SIZE (6U)
+
+typedef struct jsg_escaped_char_t
 {
-    char output_char        = input_char;
-    bool flag_need_escaping = false;
+    char buf[JSG_ESCAPED_CHAR_BUF_SIZE];
+} jsg_escaped_char_t;
+
+static bool
+jsg_check_char_escaping(const char input_char, jsg_escaped_char_t* const p_output_char)
+{
+    if (((uint8_t)input_char >= (uint8_t)' ') && (input_char != '\"') && (input_char != '\\'))
+    {
+        if (NULL != p_output_char)
+        {
+            p_output_char->buf[0] = input_char;
+            p_output_char->buf[1] = '\0';
+        }
+        return false;
+    }
+    if (NULL == p_output_char)
+    {
+        return true;
+    }
+
+    p_output_char->buf[1] = '\0';
     switch (input_char)
     {
         case '\"':
-            output_char        = '\"';
-            flag_need_escaping = true;
+            p_output_char->buf[0] = '\"';
             break;
         case '\\':
-            output_char        = '\\';
-            flag_need_escaping = true;
+            p_output_char->buf[0] = '\\';
             break;
         case '\b':
-            output_char        = 'b';
-            flag_need_escaping = true;
+            p_output_char->buf[0] = 'b';
             break;
         case '\f':
-            output_char        = 'f';
-            flag_need_escaping = true;
+            p_output_char->buf[0] = 'f';
             break;
         case '\n':
-            output_char        = 'n';
-            flag_need_escaping = true;
+            p_output_char->buf[0] = 'n';
             break;
         case '\r':
-            output_char        = 'r';
-            flag_need_escaping = true;
+            p_output_char->buf[0] = 'r';
             break;
         case '\t':
-            output_char        = 't';
-            flag_need_escaping = true;
+            p_output_char->buf[0] = 't';
             break;
         default:
+            /* escape and print as unicode codepoint */
+            (void)snprintf(p_output_char->buf, sizeof(p_output_char->buf), "u%04x", (uint8_t)input_char);
             break;
     }
-    if (NULL != p_output_char)
-    {
-        *p_output_char = output_char;
-    }
-    return flag_need_escaping;
+    return true;
 }
 
 static bool
@@ -537,11 +548,11 @@ json_stream_gen_add_string(json_stream_gen_t* const p_gen, const char* const p_n
 
     for (const char* p_char = p_val; '\0' != *p_char; ++p_char)
     {
-        char       output_char = '\0';
-        const bool flag_escape = jsg_check_char_escaping(*p_char, &output_char);
+        jsg_escaped_char_t escaped_char = { '\0' };
+        const bool         flag_escape  = jsg_check_char_escaping(*p_char, &escaped_char);
         if (flag_escape)
         {
-            if (!jsg_printf(p_gen, saved_chunk_buf_idx, "\\%c", output_char))
+            if (!jsg_printf(p_gen, saved_chunk_buf_idx, "\\%s", escaped_char.buf))
             {
                 return false;
             }
