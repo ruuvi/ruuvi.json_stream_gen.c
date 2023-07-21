@@ -34,6 +34,7 @@ typedef enum json_stream_gen_state_e
     JSON_STREAM_GEN_STATE_JSON_CLOSING_BRACKET,
     JSON_STREAM_GEN_STATE_FINISHED,
     JSON_STREAM_GEN_STATE_ERROR_INSUFFICIENT_BUFFER,
+    JSON_STREAM_GEN_STATE_ERROR,
 } json_stream_gen_state_e;
 
 struct json_stream_gen_t
@@ -92,6 +93,10 @@ jsg_copy_non_zero_cfg_fields(json_stream_gen_cfg_t* const p_dst, const json_stre
     {
         p_dst->p_free = p_src->p_free;
     }
+    if (NULL != p_src->p_localeconv)
+    {
+        p_dst->p_localeconv = p_src->p_localeconv;
+    }
 }
 
 json_stream_gen_t*
@@ -111,15 +116,6 @@ json_stream_gen_create(
         jsg_copy_non_zero_cfg_fields(&cfg, p_cfg);
     }
     if (cfg.max_chunk_size < JSON_STREAM_GEN_CFG_MIN_CHUNK_SIZE)
-    {
-        return NULL;
-    }
-    if (cfg.flag_formatted_json
-        && ((0 == cfg.max_nesting_level) || (0 == cfg.indentation) || (0 == cfg.indentation_mark)))
-    {
-        return NULL;
-    }
-    if ((NULL == cfg.p_malloc) || (NULL == cfg.p_free))
     {
         return NULL;
     }
@@ -222,21 +218,12 @@ jsg_printf(json_stream_gen_t* const p_gen, const size_t saved_chunk_buf_idx, con
     return res;
 }
 
-static bool
+static void
 jsg_step_json_opening_bracket(json_stream_gen_t* const p_gen)
 {
-    if (p_gen->cur_nesting_level >= p_gen->cfg.max_nesting_level)
-    {
-        return false;
-    }
-    const jsg_int_t indent = (jsg_int_t)p_gen->cur_nesting_level * (jsg_int_t)p_gen->cfg.indentation;
-    if (!jsg_printf(p_gen, p_gen->chunk_buf_idx, "%.*s{", indent, p_gen->p_indent_filling))
-    {
-        return false;
-    }
+    (void)jsg_printf(p_gen, p_gen->chunk_buf_idx, "{");
     p_gen->json_gen_state = JSON_STREAM_GEN_STATE_GENERATING_ITEMS;
     p_gen->cur_nesting_level += 1;
-    return true;
 }
 
 static bool
@@ -261,12 +248,12 @@ jsg_step_generating_items(json_stream_gen_t* const p_gen)
 static bool
 jsg_step_json_closing_bracket(json_stream_gen_t* const p_gen)
 {
-    if (0 == p_gen->cur_nesting_level)
+    if (1 != p_gen->cur_nesting_level)
     {
+        p_gen->json_gen_state = JSON_STREAM_GEN_STATE_ERROR;
         return false;
     }
-    const jsg_int_t indent = ((jsg_int_t)p_gen->cur_nesting_level - 1) * (jsg_int_t)p_gen->cfg.indentation;
-    if (!jsg_printf(p_gen, p_gen->chunk_buf_idx, "%s%.*s}", p_gen->p_eol, indent, p_gen->p_indent_filling))
+    if (!jsg_printf(p_gen, p_gen->chunk_buf_idx, "%s}", p_gen->p_eol))
     {
         return false;
     }
@@ -281,10 +268,7 @@ jsg_get_next_chunk_step(json_stream_gen_t* const p_gen)
     switch (p_gen->json_gen_state)
     {
         case JSON_STREAM_GEN_STATE_JSON_OPENING_BRACKET:
-            if (!jsg_step_json_opening_bracket(p_gen))
-            {
-                return false;
-            }
+            jsg_step_json_opening_bracket(p_gen);
             break;
         case JSON_STREAM_GEN_STATE_GENERATING_ITEMS:
             if (!jsg_step_generating_items(p_gen))
@@ -300,6 +284,7 @@ jsg_get_next_chunk_step(json_stream_gen_t* const p_gen)
             break;
         case JSON_STREAM_GEN_STATE_FINISHED:
         case JSON_STREAM_GEN_STATE_ERROR_INSUFFICIENT_BUFFER:
+        case JSON_STREAM_GEN_STATE_ERROR:
             return false;
     }
     return true;
@@ -315,7 +300,8 @@ json_stream_gen_get_next_chunk(json_stream_gen_t* const p_gen)
         // Continuously fetch and add the next portion of data to the chunk as long as such data is available.
         // The loop will stop if the chunk becomes overflowed.
     }
-    if (JSON_STREAM_GEN_STATE_ERROR_INSUFFICIENT_BUFFER == p_gen->json_gen_state)
+    if ((JSON_STREAM_GEN_STATE_ERROR_INSUFFICIENT_BUFFER == p_gen->json_gen_state)
+        || (JSON_STREAM_GEN_STATE_ERROR == p_gen->json_gen_state))
     {
         return NULL;
     }
@@ -432,9 +418,9 @@ json_stream_gen_start_array(json_stream_gen_t* const p_gen, const char* const p_
 static bool
 jsg_end_obj_or_array(json_stream_gen_t* const p_gen, const char symbol)
 {
-    if (0 == p_gen->cur_nesting_level)
+    if (p_gen->cur_nesting_level <= 1)
     {
-        p_gen->flag_new_data_added = true;
+        p_gen->json_gen_state = JSON_STREAM_GEN_STATE_ERROR;
         return false;
     }
     if (p_gen->is_first_item)
@@ -693,9 +679,9 @@ json_stream_gen_add_null(json_stream_gen_t* const p_gen, const char* const p_nam
 }
 
 static char
-jsg_get_decimal_point(void)
+jsg_get_decimal_point(const json_stream_gen_t* const p_gen)
 {
-    const struct lconv* const p_lc = localeconv();
+    const struct lconv* const p_lc = p_gen->cfg.p_localeconv();
     if (NULL == p_lc)
     {
         return '.';
@@ -710,6 +696,7 @@ typedef struct jsg_float_str_buf_t
 
 static bool
 jsg_float_to_str(
+    const json_stream_gen_t* const            p_gen,
     const float_t                             val,
     const bool                                flag_fixed_point,
     const json_stream_gen_ieee754_precision_t precision,
@@ -733,7 +720,7 @@ jsg_float_to_str(
             // Check if the original double value can be recovered
             char*         p_end = NULL;
             const float_t test  = strtof(p_str->buffer, &p_end);
-            if (('\0' != *p_end) || (*(const uint32_t*)&test != *(const uint32_t*)&val))
+            if (*(const uint32_t*)&test != *(const uint32_t*)&val)
             {
                 // If not, print with more decimal places of precision
                 len = snprintf(p_str->buffer, sizeof(p_str->buffer), "%1.9g", val);
@@ -750,7 +737,7 @@ jsg_float_to_str(
         return false;
     }
 
-    char* p_decimal_point = strchr(p_str->buffer, jsg_get_decimal_point());
+    char* p_decimal_point = strchr(p_str->buffer, jsg_get_decimal_point(p_gen));
     if (NULL != p_decimal_point)
     {
         *p_decimal_point = '.';
@@ -769,7 +756,7 @@ jsg_add_float_with_precision(
     p_gen->flag_new_data_added = true;
 
     jsg_float_str_buf_t float_str = { 0 };
-    if (!jsg_float_to_str(val, flag_fixed_point, precision, &float_str))
+    if (!jsg_float_to_str(p_gen, val, flag_fixed_point, precision, &float_str))
     {
         return json_stream_gen_add_null(p_gen, p_name);
     }
@@ -794,6 +781,7 @@ typedef struct jsg_double_str_buf_t
 
 static bool
 jsg_double_to_str(
+    const json_stream_gen_t* const            p_gen,
     const double_t                            val,
     const bool                                flag_fixed_point,
     const json_stream_gen_ieee754_precision_t precision,
@@ -817,7 +805,7 @@ jsg_double_to_str(
             // Check if the original double value can be recovered
             char*          p_end = NULL;
             const double_t test  = strtod(p_str->buffer, &p_end);
-            if (('\0' != *p_end) || (*(const uint64_t*)&test != *(const uint64_t*)&val))
+            if (*(const uint64_t*)&test != *(const uint64_t*)&val)
             {
                 // If not, print with more decimal places of precision
                 len = snprintf(p_str->buffer, sizeof(p_str->buffer), "%1.17g", val);
@@ -834,7 +822,7 @@ jsg_double_to_str(
         return false;
     }
 
-    char* p_decimal_point = strchr(p_str->buffer, jsg_get_decimal_point());
+    char* p_decimal_point = strchr(p_str->buffer, jsg_get_decimal_point(p_gen));
     if (NULL != p_decimal_point)
     {
         *p_decimal_point = '.';
@@ -853,7 +841,7 @@ jsg_add_double_with_precision(
     p_gen->flag_new_data_added = true;
 
     jsg_double_str_buf_t double_str = { 0 };
-    if (!jsg_double_to_str(val, flag_fixed_point, precision, &double_str))
+    if (!jsg_double_to_str(p_gen, val, flag_fixed_point, precision, &double_str))
     {
         return json_stream_gen_add_null(p_gen, p_name);
     }

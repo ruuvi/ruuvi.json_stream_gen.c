@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
+#include <locale.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -65,17 +66,25 @@ typedef void* (*json_stream_gen_malloc_t)(size_t size);
 typedef void (*json_stream_gen_free_t)(void* ptr);
 
 /**
+ * @brief A type definition for a function pointer that represents a free-like function.
+ *
+ * @param ptr The pointer to the memory block to be freed.
+ */
+typedef struct lconv* (*json_stream_gen_localeconv_t)(void);
+
+/**
  * @brief json_stream_gen_cfg_t is a struct for configuration settings of the JSON stream generator.
  */
 typedef struct json_stream_gen_cfg_t
 {
-    json_stream_gen_size_t   max_chunk_size;      ///< Maximum size for each JSON data chunk (in bytes).
-    bool                     flag_formatted_json; ///< True enables pretty printing (formatted JSON).
-    char                     indentation_mark;    ///< Character for indentation in pretty printing (' ' or '\t').
-    uint32_t                 indentation;         ///< Number of indentation characters per level in pretty printing.
-    uint32_t                 max_nesting_level;   ///< Maximum depth for nested JSON elements (arrays, objects).
-    json_stream_gen_malloc_t p_malloc;            ///< Function pointer to replace standard 'malloc'.
-    json_stream_gen_free_t   p_free;              ///< Function pointer to replace standard 'free'.
+    json_stream_gen_size_t       max_chunk_size;      ///< Maximum size for each JSON data chunk (in bytes).
+    bool                         flag_formatted_json; ///< True enables pretty printing (formatted JSON).
+    char                         indentation_mark;    ///< Character for indentation in pretty printing (' ' or '\t').
+    uint32_t                     indentation;       ///< Number of indentation characters per level in pretty printing.
+    uint32_t                     max_nesting_level; ///< Maximum depth for nested JSON elements (arrays, objects).
+    json_stream_gen_malloc_t     p_malloc;          ///< Function pointer to replace standard 'malloc'.
+    json_stream_gen_free_t       p_free;            ///< Function pointer to replace standard 'free'.
+    json_stream_gen_localeconv_t p_localeconv;      ///< Function pointer to replace standard 'localeconv'.
 } json_stream_gen_cfg_t;
 
 typedef int json_stream_gen_ieee754_precision_t;
@@ -153,6 +162,7 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
         .indentation_mark  = JSON_STREAM_GEN_CFG_DEFAULT_INDENTATION_MARK, \
         .max_nesting_level = JSON_STREAM_GEN_CFG_DEFAULT_MAX_NESTING_LEVEL, \
         .indentation = JSON_STREAM_GEN_CFG_DEFAULT_INDENTATION, .p_malloc = &malloc, .p_free = &free, \
+        .p_localeconv = &localeconv, \
     }
 
 /**

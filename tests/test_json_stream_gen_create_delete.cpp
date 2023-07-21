@@ -69,18 +69,22 @@ protected:
     void
     SetUp() override
     {
-        g_pTestClass = this;
-        this->m_mem_alloc_trace.clear();
+        g_pTestClass               = this;
+        this->m_malloc_cnt         = 0;
+        this->m_malloc_fail_on_cnt = 0;
     }
 
     void
     TearDown() override
     {
+        this->m_mem_alloc_trace.clear();
         g_pTestClass = nullptr;
     }
 
 public:
     MemAllocTrace m_mem_alloc_trace;
+    uint32_t      m_malloc_cnt {};
+    uint32_t      m_malloc_fail_on_cnt {};
 
     TestJsonStreamGenM();
 
@@ -99,6 +103,11 @@ extern "C" {
 static void*
 my_malloc(const size_t size)
 {
+    assert(nullptr != g_pTestClass);
+    if (++g_pTestClass->m_malloc_cnt == g_pTestClass->m_malloc_fail_on_cnt)
+    {
+        return nullptr;
+    }
     void* ptr = malloc(size);
     assert(nullptr != ptr);
     g_pTestClass->m_mem_alloc_trace.add(ptr);
@@ -108,6 +117,7 @@ my_malloc(const size_t size)
 static void
 my_free(void* ptr)
 {
+    assert(nullptr != g_pTestClass);
     g_pTestClass->m_mem_alloc_trace.remove(ptr);
     free(ptr);
 }
@@ -187,5 +197,71 @@ TEST_F(TestJsonStreamGenM, test_create_and_delete_with_user_context) // NOLINT
     ASSERT_EQ(string(""), string(p_chunk));
 
     json_stream_gen_delete(&p_gen);
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestJsonStreamGenM, test_create_and_delete_with_user_context_null_ptr) // NOLINT
+{
+    typedef struct test_user_ctx_t
+    {
+        int32_t val1;
+    } test_user_ctx_t;
+    const json_stream_gen_cfg_t cfg = {
+        .p_malloc = &my_malloc,
+        .p_free   = &my_free,
+    };
+    json_stream_gen_t* p_gen = json_stream_gen_create(
+        &cfg,
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+            const test_user_ctx_t* const p_ctx = static_cast<const test_user_ctx_t*>(p_user_ctx);
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_ADD_INT32(p_gen, "key0", p_ctx->val1);
+            JSON_STREAM_GEN_END_GENERATOR_FUNC();
+        },
+        sizeof(test_user_ctx_t),
+        nullptr);
+    ASSERT_EQ(nullptr, p_gen);
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestJsonStreamGenM, test_create_with_small_chunk_size) // NOLINT
+{
+    const json_stream_gen_cfg_t cfg = {
+        .max_chunk_size = 2,
+        .p_malloc       = &my_malloc,
+        .p_free         = &my_free,
+    };
+    json_stream_gen_t* p_gen = json_stream_gen_create(
+        &cfg,
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+            (void)p_user_ctx;
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_ADD_INT32(p_gen, "key0", 125);
+            JSON_STREAM_GEN_END_GENERATOR_FUNC();
+        },
+        0,
+        nullptr);
+    ASSERT_EQ(nullptr, p_gen);
+    ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
+}
+
+TEST_F(TestJsonStreamGenM, test_create_malloc_failed) // NOLINT
+{
+    this->m_malloc_fail_on_cnt      = 1;
+    const json_stream_gen_cfg_t cfg = {
+        .p_malloc = &my_malloc,
+        .p_free   = &my_free,
+    };
+    json_stream_gen_t* p_gen = json_stream_gen_create(
+        &cfg,
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+            (void)p_user_ctx;
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_ADD_INT32(p_gen, "key0", 125);
+            JSON_STREAM_GEN_END_GENERATOR_FUNC();
+        },
+        0,
+        nullptr);
+    ASSERT_EQ(nullptr, p_gen);
     ASSERT_TRUE(g_pTestClass->m_mem_alloc_trace.is_empty());
 }

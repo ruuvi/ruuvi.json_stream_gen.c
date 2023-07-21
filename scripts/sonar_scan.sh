@@ -23,6 +23,8 @@ wget -P "$HOME/bin" https://sonarcloud.io/static/cpp/build-wrapper-linux-x86.zip
 unzip -o "$HOME/bin/build-wrapper-linux-x86.zip" -d "$HOME/bin"
 export PATH=$PATH:$HOME/bin/build-wrapper-linux-x86
 
+find . -type f -name "*.gcno" -exec rm -f {} \;
+find . -type f -name "*.gcov" -exec rm -f {} \;
 rm -rf build
 mkdir -p build
 cd build

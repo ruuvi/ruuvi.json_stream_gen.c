@@ -21,6 +21,7 @@ add_executable(${ProjectId}
         test_json_stream_gen_create_delete.cpp
         test_json_stream_gen_unformatted.cpp
         test_json_stream_gen_formatted.cpp
+        test_json_stream_gen_conditions.cpp
         json_stream_gen_wrapper.h
         ${SRC}/json_stream_gen.c
         ${INC}/json_stream_gen.h
