@@ -1,9 +1,8 @@
-name: SonarCloud Analysis with Google Test and gcovr
+name: SonarCloud Analysis
 
 on:
   push:
-    branches:
-      - '**'
+    branches: [ master ]
   pull_request:
     branches: [ master ]
     types: [opened, synchronize, reopened]
@@ -26,7 +25,8 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y g++ cmake gcovr
+          sudo apt-get install -y gcc g++ cmake make ninja-build
+          sudo apt-get install -y gcovr
           sudo apt-get install -y locales
           sudo locale-gen de_DE.UTF-8
 
@@ -37,8 +37,8 @@ jobs:
         run: |
           mkdir build
           cd build
-          build-wrapper-linux-x86-64 --out-dir ../${{ env.BUILD_WRAPPER_OUT_DIR }} cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" ..
-          build-wrapper-linux-x86-64 --out-dir ../${{ env.BUILD_WRAPPER_OUT_DIR }} make
+          build-wrapper-linux-x86-64 --out-dir ../${{ env.BUILD_WRAPPER_OUT_DIR }} cmake -DCMAKE_BUILD_TYPE=Debug -G "Ninja" ..
+          build-wrapper-linux-x86-64 --out-dir ../${{ env.BUILD_WRAPPER_OUT_DIR }} ninja
           cd ..
 
       - name: Run test with coverage
@@ -46,8 +46,8 @@ jobs:
           cd tests
           mkdir build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" ..
-          make
+          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" -G "Ninja" ..
+          ninja
           ctest
           cd ../..
           gcovr -r . --sonarqube -o coverage.xml
