@@ -1,5 +1,5 @@
 /**
- * @file test_json_stram_gen_create_and_delete.cpp
+ * @file test_json_stream_gen_create_and_delete.cpp
  * @author TheSomeMan
  * @date 2023-08-11
  * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
@@ -127,12 +127,12 @@ my_free(void* ptr)
 /*** Unit-Tests
  * *******************************************************************************************************/
 
-static bool
+static json_stream_gen_callback_result_t
 cb_generate_empty_json(json_stream_gen_t* const p_gen, const void* const p_user_ctx)
 {
-    (void)p_gen;
     (void)p_user_ctx;
-    return true;
+    JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
+    JSON_STREAM_GEN_END_GENERATOR_FUNC();
 }
 
 TEST_F(TestJsonStreamGenM, test_create_and_delete_without_user_context) // NOLINT
@@ -173,9 +173,9 @@ TEST_F(TestJsonStreamGenM, test_create_and_delete_with_user_context) // NOLINT
     test_user_ctx_t*   p_ctx = nullptr;
     json_stream_gen_t* p_gen = json_stream_gen_create(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             const test_user_ctx_t* const p_ctx = static_cast<const test_user_ctx_t*>(p_user_ctx);
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
             JSON_STREAM_GEN_ADD_INT32(p_gen, "key0", p_ctx->val1);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
@@ -212,9 +212,9 @@ TEST_F(TestJsonStreamGenM, test_create_and_delete_with_user_context_null_ptr) //
     };
     json_stream_gen_t* p_gen = json_stream_gen_create(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             const test_user_ctx_t* const p_ctx = static_cast<const test_user_ctx_t*>(p_user_ctx);
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
             JSON_STREAM_GEN_ADD_INT32(p_gen, "key0", p_ctx->val1);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
@@ -233,9 +233,9 @@ TEST_F(TestJsonStreamGenM, test_create_with_small_chunk_size) // NOLINT
     };
     json_stream_gen_t* p_gen = json_stream_gen_create(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             (void)p_user_ctx;
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
             JSON_STREAM_GEN_ADD_INT32(p_gen, "key0", 125);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
@@ -254,9 +254,9 @@ TEST_F(TestJsonStreamGenM, test_create_malloc_failed) // NOLINT
     };
     json_stream_gen_t* p_gen = json_stream_gen_create(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             (void)p_user_ctx;
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
             JSON_STREAM_GEN_ADD_INT32(p_gen, "key0", 125);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
         },
