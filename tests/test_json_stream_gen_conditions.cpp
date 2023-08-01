@@ -1,5 +1,5 @@
 /**
- * @file test_json_stram_gen_conditions.cpp
+ * @file test_json_stream_gen_conditions.cpp
  * @author TheSomeMan
  * @date 2023-08-20
  * @copyright Ruuvi Innovations Ltd, license BSD-3-Clause.
@@ -67,9 +67,9 @@ TEST_F(TestJsonStreamGenC, test_indentation_mark_tab) // NOLINT
     };
     std::unique_ptr<JsonStreamGenWrapper> p_wrapper = std::make_unique<JsonStreamGenWrapper>(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             (void)p_user_ctx;
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
             JSON_STREAM_GEN_ADD_STRING(p_gen, "key0", "abc");
             JSON_STREAM_GEN_ADD_STRING(p_gen, "key1", "def");
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
@@ -96,9 +96,9 @@ TEST_F(TestJsonStreamGenC, test_extra_end_object) // NOLINT
     json_stream_gen_cfg_t                 cfg       = {};
     std::unique_ptr<JsonStreamGenWrapper> p_wrapper = std::make_unique<JsonStreamGenWrapper>(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             (void)p_user_ctx;
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
             JSON_STREAM_GEN_ADD_STRING(p_gen, "key0", "abc");
             JSON_STREAM_GEN_END_OBJECT(p_gen);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
@@ -116,9 +116,9 @@ TEST_F(TestJsonStreamGenC, test_extra_end_object2) // NOLINT
     json_stream_gen_cfg_t                 cfg       = {};
     std::unique_ptr<JsonStreamGenWrapper> p_wrapper = std::make_unique<JsonStreamGenWrapper>(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             (void)p_user_ctx;
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
             JSON_STREAM_GEN_END_OBJECT(p_gen);
             JSON_STREAM_GEN_ADD_STRING(p_gen, "key0", "abc");
             JSON_STREAM_GEN_END_OBJECT(p_gen);
@@ -137,9 +137,9 @@ TEST_F(TestJsonStreamGenC, test_extra_end_object3) // NOLINT
     json_stream_gen_cfg_t                 cfg       = {};
     std::unique_ptr<JsonStreamGenWrapper> p_wrapper = std::make_unique<JsonStreamGenWrapper>(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             (void)p_user_ctx;
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
             JSON_STREAM_GEN_START_OBJECT(p_gen, "obj");
             JSON_STREAM_GEN_ADD_STRING(p_gen, "key0", "abc");
             JSON_STREAM_GEN_END_OBJECT(p_gen);
@@ -159,9 +159,9 @@ TEST_F(TestJsonStreamGenC, test_no_end_object) // NOLINT
     json_stream_gen_cfg_t                 cfg       = {};
     std::unique_ptr<JsonStreamGenWrapper> p_wrapper = std::make_unique<JsonStreamGenWrapper>(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             (void)p_user_ctx;
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
             JSON_STREAM_GEN_START_OBJECT(p_gen, "obj");
             JSON_STREAM_GEN_ADD_STRING(p_gen, "key0", "abc");
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
@@ -179,9 +179,9 @@ TEST_F(TestJsonStreamGenC, test_extra_end_array) // NOLINT
     json_stream_gen_cfg_t                 cfg       = {};
     std::unique_ptr<JsonStreamGenWrapper> p_wrapper = std::make_unique<JsonStreamGenWrapper>(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             (void)p_user_ctx;
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
             JSON_STREAM_GEN_ADD_STRING(p_gen, "key0", "abc");
             JSON_STREAM_GEN_END_ARRAY(p_gen);
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
@@ -199,9 +199,9 @@ TEST_F(TestJsonStreamGenC, test_extra_end_array2) // NOLINT
     json_stream_gen_cfg_t                 cfg       = {};
     std::unique_ptr<JsonStreamGenWrapper> p_wrapper = std::make_unique<JsonStreamGenWrapper>(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             (void)p_user_ctx;
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
             JSON_STREAM_GEN_END_ARRAY(p_gen);
             JSON_STREAM_GEN_ADD_STRING(p_gen, "key0", "abc");
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
@@ -219,9 +219,9 @@ TEST_F(TestJsonStreamGenC, test_extra_end_array3) // NOLINT
     json_stream_gen_cfg_t                 cfg       = {};
     std::unique_ptr<JsonStreamGenWrapper> p_wrapper = std::make_unique<JsonStreamGenWrapper>(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             (void)p_user_ctx;
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
             JSON_STREAM_GEN_START_ARRAY(p_gen, "arr");
             JSON_STREAM_GEN_ADD_STRING_TO_ARRAY(p_gen, "abc");
             JSON_STREAM_GEN_END_ARRAY(p_gen);
@@ -242,9 +242,9 @@ TEST_F(TestJsonStreamGenC, test_no_end_array3) // NOLINT
     json_stream_gen_cfg_t                 cfg       = {};
     std::unique_ptr<JsonStreamGenWrapper> p_wrapper = std::make_unique<JsonStreamGenWrapper>(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             (void)p_user_ctx;
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
             JSON_STREAM_GEN_START_ARRAY(p_gen, "arr");
             JSON_STREAM_GEN_ADD_STRING_TO_ARRAY(p_gen, "abc");
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
@@ -265,9 +265,9 @@ TEST_F(TestJsonStreamGenC, test_calc_size_while_generating_chunks) // NOLINT
     };
     std::unique_ptr<JsonStreamGenWrapper> p_wrapper = std::make_unique<JsonStreamGenWrapper>(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             (void)p_user_ctx;
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
             JSON_STREAM_GEN_ADD_STRING(p_gen, "key0", "abc");
             JSON_STREAM_GEN_ADD_STRING(p_gen, "key1", "def");
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
@@ -313,9 +313,9 @@ TEST_F(TestJsonStreamGenC, test_insufficient_buffer_for_one_string) // NOLINT
     };
     std::unique_ptr<JsonStreamGenWrapper> p_wrapper = std::make_unique<JsonStreamGenWrapper>(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             (void)p_user_ctx;
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
             JSON_STREAM_GEN_ADD_STRING(p_gen, "key0", "abc");
             JSON_STREAM_GEN_ADD_STRING(p_gen, "key1", "def");
             JSON_STREAM_GEN_END_GENERATOR_FUNC();
@@ -359,9 +359,9 @@ TEST_F(TestJsonStreamGenC, test_different_locale_with_comma_as_decimal_separator
     };
     std::unique_ptr<JsonStreamGenWrapper> p_wrapper = std::make_unique<JsonStreamGenWrapper>(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             (void)p_user_ctx;
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
             JSON_STREAM_GEN_ADD_FLOAT(p_gen, "key0", 1.234f);
             JSON_STREAM_GEN_ADD_FLOAT_WITH_PRECISION(p_gen, "key1", 1.234f, 2);
             JSON_STREAM_GEN_ADD_FLOAT_FIXED_POINT(p_gen, "key2", 1.234f, JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_2);
@@ -409,9 +409,9 @@ TEST_F(TestJsonStreamGenC, test_localeconv_null) // NOLINT
     };
     std::unique_ptr<JsonStreamGenWrapper> p_wrapper = std::make_unique<JsonStreamGenWrapper>(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             (void)p_user_ctx;
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
             JSON_STREAM_GEN_ADD_FLOAT(p_gen, "key0", 1.234f);
             JSON_STREAM_GEN_ADD_FLOAT_WITH_PRECISION(p_gen, "key1", 1.234f, 2);
             JSON_STREAM_GEN_ADD_FLOAT_FIXED_POINT(p_gen, "key2", 1.234f, JSON_STREAM_GEN_NUM_DECIMALS_FLOAT_2);
@@ -452,9 +452,9 @@ TEST_F(TestJsonStreamGenC, test_float_nan_inf) // NOLINT
     };
     std::unique_ptr<JsonStreamGenWrapper> p_wrapper = std::make_unique<JsonStreamGenWrapper>(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             (void)p_user_ctx;
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
 
             JSON_STREAM_GEN_ADD_FLOAT(p_gen, "f_NAN_1", NAN);
             JSON_STREAM_GEN_ADD_FLOAT_WITH_PRECISION(p_gen, "f_NAN_2", NAN, 2);
@@ -528,9 +528,9 @@ TEST_F(TestJsonStreamGenC, test_float_limited_fixed_point_with_num_decimals_out_
     };
     std::unique_ptr<JsonStreamGenWrapper> p_wrapper = std::make_unique<JsonStreamGenWrapper>(
         &cfg,
-        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> bool {
+        [](json_stream_gen_t* const p_gen, const void* const p_user_ctx) -> json_stream_gen_callback_result_t {
             (void)p_user_ctx;
-            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC();
+            JSON_STREAM_GEN_BEGIN_GENERATOR_FUNC(p_gen);
 
             JSON_STREAM_GEN_ADD_FLOAT_LIMITED_FIXED_POINT(
                 p_gen,

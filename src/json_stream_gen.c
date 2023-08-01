@@ -47,6 +47,7 @@ struct json_stream_gen_t
     uint32_t                           cur_nesting_level;
     char*                              p_indent_filling;
     bool                               flag_new_data_added;
+    int32_t                            json_stream_gen_step;
     int32_t                            json_stream_gen_stage;
     json_stream_gen_state_e            json_gen_state;
     bool                               is_first_item;
@@ -64,6 +65,12 @@ struct json_stream_gen_t
  * according to these particular constraints.
  */
 typedef int jsg_int_t;
+
+void
+json_stream_gen_begin_generator_func(json_stream_gen_t* const p_gen)
+{
+    p_gen->json_stream_gen_step = 0;
+}
 
 static void
 jsg_copy_non_zero_cfg_fields(json_stream_gen_cfg_t* const p_dst, const json_stream_gen_cfg_t* const p_src)
@@ -172,10 +179,16 @@ json_stream_gen_create(
     return p_gen;
 }
 
-int32_t
-json_stream_gen_get_stage_internal(const json_stream_gen_t* const p_gen)
+bool
+json_stream_gen_check_stage_internal(json_stream_gen_t* const p_gen)
 {
-    return p_gen->json_stream_gen_stage;
+    const int32_t cur_step = p_gen->json_stream_gen_step;
+    p_gen->json_stream_gen_step += 1;
+    if (cur_step == p_gen->json_stream_gen_stage)
+    {
+        return true;
+    }
+    return false;
 }
 
 void
@@ -229,8 +242,9 @@ jsg_step_json_opening_bracket(json_stream_gen_t* const p_gen)
 static bool
 jsg_step_generating_items(json_stream_gen_t* const p_gen)
 {
-    p_gen->flag_new_data_added = false;
-    if (!p_gen->cb_gen_next(p_gen, p_gen->p_ctx))
+    p_gen->flag_new_data_added                  = false;
+    const json_stream_gen_callback_result_t res = p_gen->cb_gen_next(p_gen, p_gen->p_ctx);
+    if (JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW == res.cb_res)
     {
         if (p_gen->flag_new_data_added && (0 == p_gen->chunk_buf_idx))
         {
@@ -238,7 +252,7 @@ jsg_step_generating_items(json_stream_gen_t* const p_gen)
         }
         return false;
     }
-    if (!p_gen->flag_new_data_added)
+    if (JSON_STREAM_GEN_CALLBACK_RESULT_FINISH == res.cb_res)
     {
         p_gen->json_gen_state = JSON_STREAM_GEN_STATE_JSON_CLOSING_BRACKET;
     }
@@ -341,6 +355,7 @@ json_stream_gen_calc_size(json_stream_gen_t* const p_gen)
 void
 json_stream_gen_reset(json_stream_gen_t* const p_gen)
 {
+    p_gen->json_stream_gen_step  = 0;
     p_gen->json_stream_gen_stage = 0;
     p_gen->json_gen_state        = JSON_STREAM_GEN_STATE_JSON_OPENING_BRACKET;
     p_gen->cur_nesting_level     = 0;
