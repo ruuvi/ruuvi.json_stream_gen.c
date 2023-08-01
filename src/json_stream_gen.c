@@ -244,7 +244,7 @@ jsg_step_generating_items(json_stream_gen_t* const p_gen)
 {
     p_gen->flag_new_data_added                  = false;
     const json_stream_gen_callback_result_t res = p_gen->cb_gen_next(p_gen, p_gen->p_ctx);
-    if (JSON_STREAM_GEN_CALLBACK_RESULT_FALSE == res.cb_res)
+    if (JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW == res.cb_res)
     {
         if (p_gen->flag_new_data_added && (0 == p_gen->chunk_buf_idx))
         {
@@ -355,6 +355,7 @@ json_stream_gen_calc_size(json_stream_gen_t* const p_gen)
 void
 json_stream_gen_reset(json_stream_gen_t* const p_gen)
 {
+    p_gen->json_stream_gen_step  = 0;
     p_gen->json_stream_gen_stage = 0;
     p_gen->json_gen_state        = JSON_STREAM_GEN_STATE_JSON_OPENING_BRACKET;
     p_gen->cur_nesting_level     = 0;

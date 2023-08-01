@@ -41,9 +41,8 @@ typedef struct json_stream_gen_t json_stream_gen_t;
  */
 typedef enum json_stream_gen_callback_result_e
 {
-    JSON_STREAM_GEN_CALLBACK_RESULT_FINISH, ///< The JSON generator has finished processing.
-    JSON_STREAM_GEN_CALLBACK_RESULT_TRUE,   ///< The JSON generator should continue processing.
-    JSON_STREAM_GEN_CALLBACK_RESULT_FALSE,  ///< Stop processing after a chunk overflow or error.
+    JSON_STREAM_GEN_CALLBACK_RESULT_FINISH,   ///< The JSON generator has finished processing.
+    JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, ///< Stop processing after a chunk overflow or error.
 } json_stream_gen_callback_result_e;
 
 /**
@@ -236,13 +235,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_start_object(p_gen, obj_name)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -259,13 +255,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_start_object(p_gen, NULL)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -282,13 +275,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_end_object(p_gen)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -306,13 +296,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_start_array(p_gen, name)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -329,13 +316,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_start_array(p_gen, NULL)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -352,13 +336,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_end_array(p_gen)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -377,13 +358,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_string(p_gen, key, val)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -401,13 +379,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_string(p_gen, NULL, val)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -425,13 +400,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_raw_string(p_gen, key, val)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -448,13 +420,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_raw_string(p_gen, NULL, val)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -473,13 +442,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_int32(p_gen, key, val)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -497,13 +463,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_int32(p_gen, NULL, val)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -522,13 +485,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_uint32(p_gen, key, val)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -546,13 +506,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_uint32(p_gen, NULL, val)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -571,13 +528,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_int64(p_gen, key, val)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -595,13 +549,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_int64(p_gen, NULL, val)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -620,13 +571,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_uint64(p_gen, key, val)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -644,13 +592,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_uint64(p_gen, NULL, val)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -669,13 +614,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_bool(p_gen, key, val)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -693,13 +635,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_bool(p_gen, NULL, val)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -717,13 +656,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_null(p_gen, key)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -740,13 +676,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_null(p_gen, NULL)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -765,13 +698,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_float(p_gen, key, val, -1)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -789,13 +719,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_float(p_gen, NULL, val, -1)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -815,13 +742,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_float(p_gen, key, val, precision)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -840,13 +764,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_float(p_gen, NULL, val, precision)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -865,13 +786,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_double(p_gen, key, val, -1)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -889,13 +807,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_double(p_gen, NULL, val, -1)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -915,13 +830,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_double(p_gen, key, val, precision)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -940,13 +852,10 @@ json_stream_gen_inc_stage_internal(json_stream_gen_t* const p_gen);
             if (!json_stream_gen_add_double(p_gen, NULL, val, precision)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -980,13 +889,10 @@ typedef enum json_stream_gen_num_decimals_float_e
             if (!json_stream_gen_add_float_fixed_point(p_gen, key, val, num_decimals)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -1005,13 +911,10 @@ typedef enum json_stream_gen_num_decimals_float_e
             if (!json_stream_gen_add_float_fixed_point(p_gen, NULL, val, num_decimals)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -1037,13 +940,10 @@ typedef enum json_stream_gen_num_decimals_float_e
             if (!json_stream_gen_add_float_limited_fixed_point(p_gen, key, val, num_decimals)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -1068,13 +968,10 @@ typedef enum json_stream_gen_num_decimals_float_e
             if (!json_stream_gen_add_float_limited_fixed_point(p_gen, NULL, val, num_decimals)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -1114,13 +1011,10 @@ typedef enum json_stream_gen_num_decimals_double_e
             if (!json_stream_gen_add_double_fixed_point(p_gen, key, val, num_decimals)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -1139,13 +1033,10 @@ typedef enum json_stream_gen_num_decimals_double_e
             if (!json_stream_gen_add_double_fixed_point(p_gen, NULL, val, num_decimals)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -1171,13 +1062,10 @@ typedef enum json_stream_gen_num_decimals_double_e
             if (!json_stream_gen_add_double_limited_fixed_point(p_gen, key, val, num_decimals)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -1203,13 +1091,10 @@ typedef enum json_stream_gen_num_decimals_double_e
             if (!json_stream_gen_add_double_limited_fixed_point(p_gen, NULL, val, num_decimals)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -1233,13 +1118,10 @@ typedef enum json_stream_gen_num_decimals_double_e
             if (!json_stream_gen_add_hex_buf(p_gen, key, p_buf, buf_len)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
@@ -1262,13 +1144,10 @@ typedef enum json_stream_gen_num_decimals_double_e
             if (!json_stream_gen_add_hex_buf(p_gen, NULL, p_buf, buf_len)) \
             { \
                 return (json_stream_gen_callback_result_t) { \
-                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_FALSE, \
+                    .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_OVERFLOW, \
                 }; \
             } \
             json_stream_gen_inc_stage_internal(p_gen); \
-            return (json_stream_gen_callback_result_t) { \
-                .cb_res = JSON_STREAM_GEN_CALLBACK_RESULT_TRUE, \
-            }; \
         } \
     } while (0)
 
